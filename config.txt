@@ -1,0 +1,4 @@
+C:\Users\gill\OneDrive - Shamir Optical Industry Ltd\Projects\SmartEyeLevel
+0.33
+false
+6
