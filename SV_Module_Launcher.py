@@ -6,6 +6,7 @@ import time
 from Webcam import WebcamCapture
 from SparkEyeLevel import SparkEyeLevel
 from SparkHeadRotation import SparkHeadRotation
+from states import State
 
 class SparkVerticalStateMachine:
     def __init__(self, spark_eye_level, spark_head_rotation, webcam, dm):
@@ -20,11 +21,11 @@ class SparkVerticalStateMachine:
         """
         Transitions between states based on the input command.
         """
-        if self.current_state() == 1:
+        if self.current_state() == State.MeasurementStart:
             try:
                 self.webcam.init()
                 self.webcam.start()
-                while self.current_state() == 1:
+                while self.current_state() == State.MeasurementStart:
                     _frame = self.webcam.get_frame()
                     if _frame is not None:
                         processed_frame, landmarks = self.spark_eye_level.process(_frame)
@@ -36,15 +37,15 @@ class SparkVerticalStateMachine:
                 self.webcam.stop()
                 self.webcam.release()
                 cv2.destroyAllWindows()
-        elif self.current_state() == 2:
+        elif self.current_state() == State.NaturalPosture:
             try:
                 self.webcam.init()
                 self.webcam.start()
-                while self.current_state() == 2:
+                while self.current_state() == State.NaturalPosture:
                     _frame = self.webcam.get_frame()
                     if _frame is not None:
                         processed_frame, landmarks = self.spark_head_rotation.process(_frame)
-                        #self.dm.set_FaceFeatures(landmarks)
+                        self.dm.set_HeadRotations(landmarks)
                         cv2.imshow("Spark Head Rotation", processed_frame)
                     if cv2.waitKey(1) & 0xFF == ord('q'):  # Press 'q' to quit
                         break
