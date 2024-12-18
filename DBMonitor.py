@@ -12,7 +12,7 @@ class DBMonitor:
     def __init__(self, db_path):
         self.db = db_path
         self.queue = Queue()
-        self.initialize_FaceFeatures()
+        self.initialize_InteractivitySync()
     
     def monitor_state(self):
         while True:
@@ -84,19 +84,22 @@ class DBMonitor:
             cursor.close()
             conn.close()
     
-    def initialize_FaceFeatures(self):
+    def initialize_InteractivitySync(self):
         try:
             conn = sqlite3.connect(self.db)
             cursor = conn.cursor()
-            cursor.execute('DELETE FROM FaceFeatures')
+            cursor.execute('DELETE FROM InteractivitySync')
             conn.commit()
-            self.execute('INSERT INTO FaceFeatures (bridge_x, bridge_y ) VALUES (?,?)', (0,0))
+            self.execute('INSERT INTO InteractivitySync (bridge_x, bridge_y, rotations ) VALUES (?,?,?)', (0,0,0))
             conn.commit()
         finally:
             conn.close()
 
     def set_FaceFeatures(self, landmarks):
-        results = self.execute('UPDATE FaceFeatures SET bridge_x=?, bridge_y=?', (landmarks))
+        results = self.execute('UPDATE InteractivitySync SET bridge_x=?, bridge_y=?', (landmarks))
+
+    def set_HeadRotations(self, rotations):
+        results = self.execute('UPDATE InteractivitySync SET rotations=?', (rotations,))
 
 if __name__ == '__main__':
     def my_callback(raw_data):

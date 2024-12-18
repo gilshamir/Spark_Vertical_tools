@@ -61,10 +61,11 @@ class SparkHeadRotation:
 
         if result.pose_landmarks:
             # Draw pose landmarks on the frame
-            self.mp_drawing.draw_landmarks(
-                frame, result.pose_landmarks, self.mp_pose.POSE_CONNECTIONS,
-                self.mp_drawing.DrawingSpec(color=(245, 117, 66), thickness=2, circle_radius=2),
-                self.mp_drawing.DrawingSpec(color=(245, 66, 230), thickness=2, circle_radius=2))
+            if self._IS_DEBUG:
+                self.mp_drawing.draw_landmarks(
+                    frame, result.pose_landmarks, self.mp_pose.POSE_CONNECTIONS,
+                    self.mp_drawing.DrawingSpec(color=(245, 117, 66), thickness=2, circle_radius=2),
+                    self.mp_drawing.DrawingSpec(color=(245, 66, 230), thickness=2, circle_radius=2))
 
             # Calculate yaw and pitch angles
             landmarks = result.pose_landmarks.landmark
@@ -139,7 +140,7 @@ if __name__ == "__main__":
             _frame = webcam.get_frame()
             if _frame is not None:
                 processed_frame, head_rotations = hr.process(_frame)
-                #dm.set_FaceFeatures(landmarks)
+                dm.set_HeadRotations(head_rotations)
                 cv2.imshow("Pupil Connection", processed_frame)
             if cv2.waitKey(1) & 0xFF == ord('q'):  # Press 'q' to quit
                 break

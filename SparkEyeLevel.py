@@ -86,7 +86,7 @@ if __name__ == "__main__":
             _frame = webcam.get_frame()
             if _frame is not None:
                 processed_frame, landmarks = el.process(_frame)
-                #dm.set_FaceFeatures(landmarks)
+                dm.set_FaceFeatures(landmarks)
                 cv2.imshow("Pupil Connection", processed_frame)
             if cv2.waitKey(1) & 0xFF == ord('q'):  # Press 'q' to quit
                 break
