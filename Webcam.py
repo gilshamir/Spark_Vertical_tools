@@ -1,13 +1,16 @@
 import cv2
 import threading
+from utils import utils
 
 class WebcamCapture:
-    def __init__(self, source=0):
+    def __init__(self, source=1):
         self.source = source
         self.capture = None
         self.frame = None
         self.running = False
         self.thread = None
+        self.CAMERA_RESOLUTION = (1280, 720)
+        self.SCREEN_RESOLUTION = utils.get_screen_dimensions()
 
     def _capture_loop(self):
         while self.running:
@@ -17,7 +20,8 @@ class WebcamCapture:
             # Convert the image to RGB (MediaPipe requires this)
             #rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             if ret:
-                self.frame = frame  # Update the latest frame
+                resized_frame = cv2.resize(frame, (self.SCREEN_RESOLUTION[0], self.SCREEN_RESOLUTION[1]))
+                self.frame = resized_frame  # Update the latest frame
 
     def get_frame(self):
         if self.running:
@@ -26,6 +30,8 @@ class WebcamCapture:
     
     def init(self):
         self.capture = cv2.VideoCapture(self.source)
+        self.capture.set(cv2.CAP_PROP_FRAME_WIDTH, self.CAMERA_RESOLUTION[0])
+        self.capture.set(cv2.CAP_PROP_FRAME_HEIGHT, self.CAMERA_RESOLUTION[1])
 
     def start(self):        
         self.running = True
@@ -44,6 +50,7 @@ class WebcamCapture:
 # Usage Example
 def main():
     webcam = WebcamCapture()
+
     try:
         webcam.init()
         webcam.start()

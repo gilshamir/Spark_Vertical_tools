@@ -24,6 +24,8 @@ class DBMonitor:
                 new_rows = cursor.fetchall()
                 for row in new_rows:
                     self.queue.put(row)  # Send data to the main thread via queue
+            except:
+                print ("DB is locked")
             finally:
                 conn.commit()
                 conn.close()
@@ -59,7 +61,7 @@ class DBMonitor:
             result = conn.commit()
             return result
         except sqlite3.Error as e:
-            print(f"An error occurred: {e}")    
+            print(f"An error occurred: {e}")
         finally:
             # Close the cursor and connection
             cursor.close()
@@ -76,7 +78,7 @@ class DBMonitor:
             results = cursor.fetchall()        
             return results    
         except sqlite3.Error as e:
-            print(f"An error occurred: {e}")    
+            print(f"An error occurred: {e}")
         finally:
             # Close the cursor and connection
             cursor.close()
