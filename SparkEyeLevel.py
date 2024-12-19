@@ -90,6 +90,8 @@ if __name__ == "__main__":
                 cv2.imshow("Pupil Connection", processed_frame)
             if cv2.waitKey(1) & 0xFF == ord('q'):  # Press 'q' to quit
                 break
+    except:
+        print("failed to process Eye Level")
     finally:
         webcam.stop()
         webcam.release()

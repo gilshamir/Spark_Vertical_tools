@@ -3,7 +3,7 @@ import threading
 from utils import utils
 
 class WebcamCapture:
-    def __init__(self, source=0):
+    def __init__(self, source=1):
         self.source = source
         self.capture = None
         self.frame = None
@@ -60,6 +60,8 @@ def main():
                 cv2.imshow("Webcam Feed", frame)
             if cv2.waitKey(1) & 0xFF == ord('q'):  # Press 'q' to quit
                 break
+    except:
+        print("Failed to start Webcam")
     finally:
         webcam.stop()
         webcam.release()

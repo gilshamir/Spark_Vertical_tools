@@ -96,10 +96,12 @@ class DBMonitor:
             conn.close()
 
     def set_FaceFeatures(self, landmarks):
-        results = self.execute('UPDATE InteractivitySync SET bridge_x=?, bridge_y=?', (landmarks))
+        if landmarks is not None:
+            results = self.execute('UPDATE InteractivitySync SET bridge_x=?, bridge_y=?', (landmarks))
 
     def set_HeadRotations(self, rotations):
-        results = self.execute('UPDATE InteractivitySync SET rotations=?', (rotations,))
+        if rotations is not None:
+            results = self.execute('UPDATE InteractivitySync SET rotations=?', (rotations,))
 
 if __name__ == '__main__':
     def my_callback(raw_data):
