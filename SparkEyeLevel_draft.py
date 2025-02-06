@@ -7,7 +7,7 @@ from utils import utils
 import numpy as np
 
 class SparkEyeLevel:
-    def __init__(self, debug=False):
+    def __init__(self, debug=True):
         self._IS_DEBUG = debug 
 
         # Initialize MediaPipe Face Mesh
@@ -16,12 +16,12 @@ class SparkEyeLevel:
 
         self.focal_length = 8 #in mm
         self.ccd_px_size = 0.005 #in mm
-        self.ccd_height_px = 720 #
-        self.screen_height_mm = 400
-        self.camera_above_screen = -10
-        self.ccd_ang = 0
+        self.ccd_height_px = 1280 #
+        self.screen_height_mm = 700
+        self.camera_above_screen = 25
+        self.ccd_ang = 25 * np.pi / 180
         self.patient_distance = 600
-        self.screen_height_px = 1080
+        self.screen_height_px = 1920
         
 
         # Define indices for the pupil approximation
@@ -113,13 +113,14 @@ if __name__ == "__main__":
             _frame = webcam.get_frame()
             if _frame is not None:
                 processed_frame, landmarks = el.process(_frame)
-                display_height = el.calculate_projection_height(processed_frame)
-                dm.set_FaceFeatures(landmarks)
+                if landmarks:
+                    display_height = el.calculate_projection_height(processed_frame)
+                #dm.set_FaceFeatures(landmarks)
                 cv2.imshow("Pupil Connection", processed_frame)
             if cv2.waitKey(1) & 0xFF == ord('q'):  # Press 'q' to quit
                 break
-    except:
-        print("failed to process Eye Level")
+    except Exception as e:
+        print(f"failed to process Eye Level. Error: {e.args[0]}")
     finally:
         webcam.stop()
         webcam.release()

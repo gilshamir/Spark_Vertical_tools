@@ -20,8 +20,10 @@ class WebcamCapture:
             # Convert the image to RGB (MediaPipe requires this)
             #rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             if ret:
-                resized_frame = cv2.resize(frame, (self.SCREEN_RESOLUTION[0], self.SCREEN_RESOLUTION[1]))
+                rotated_frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
+                resized_frame = cv2.resize(rotated_frame, (self.SCREEN_RESOLUTION[0], self.SCREEN_RESOLUTION[1]))
                 self.frame = resized_frame  # Update the latest frame
+                #self.frame = frame
 
     def get_frame(self):
         if self.running:
