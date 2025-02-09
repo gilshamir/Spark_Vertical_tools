@@ -4,14 +4,25 @@ from DBMonitor import DBMonitor
 import os
 from Webcam import WebcamCapture
 from utils import utils
+import numpy as np
 
 class SparkEyeLevel:
-    def __init__(self, debug=False):
+    def __init__(self, debug=True):
         self._IS_DEBUG = debug 
 
         # Initialize MediaPipe Face Mesh
         self.mp_face_mesh = mp.solutions.face_mesh
         self.face_mesh = self.mp_face_mesh.FaceMesh(min_detection_confidence=0.5, min_tracking_confidence=0.5)
+
+        self.focal_length = 8 #in mm
+        self.ccd_px_size = 0.005 #in mm
+        self.ccd_height_px = 1280 #
+        self.screen_height_mm = 700
+        self.camera_above_screen = 15
+        self.ccd_ang = 27 * np.pi / 180
+        self.patient_distance = 600
+        self.screen_height_px = 1920
+        
 
         # Define indices for the pupil approximation
         #https://storage.googleapis.com/mediapipe-assets/documentation/mediapipe_face_landmark_fullsize.png
@@ -65,7 +76,23 @@ class SparkEyeLevel:
                         cv2.line(frame, (left_eye_x_coord, left_eye_y_coord), (right_eye_x_coord, right_eye_y_coord), (0, 255, 0), 3)
         
         return (frame, self.landmarks)
+    
+    def calculate_projection_height(self, frame):
+        h, w, _ = frame.shape
+        x, y = self.landmarks
+        midImageHeight = h/2
+        dy_pixels = midImageHeight-y
+        dy_mm = dy_pixels * self.ccd_px_size * self.ccd_height_px / h
 
+        alpha = np.arctan(dy_mm / self.focal_length)
+        phi = self.ccd_ang - alpha
+        reqiredHeight = self.patient_distance * np.tan(phi) - self.camera_above_screen
+        reqiredHeight = reqiredHeight * self.screen_height_px / self.screen_height_mm
+        if self._IS_DEBUG:
+            print(reqiredHeight)
+            cv2.line(frame, (0, int(reqiredHeight)), (w, int(reqiredHeight)), (0, 0, 222), 3)
+        return reqiredHeight
+    
 if __name__ == "__main__":
     # Read the database directory from the first line of the config file
     with open('config.txt', 'r') as file:
@@ -86,12 +113,14 @@ if __name__ == "__main__":
             _frame = webcam.get_frame()
             if _frame is not None:
                 processed_frame, landmarks = el.process(_frame)
+                if landmarks:
+                    display_height = el.calculate_projection_height(processed_frame)
                 #dm.set_FaceFeatures(landmarks)
                 cv2.imshow("Pupil Connection", processed_frame)
             if cv2.waitKey(1) & 0xFF == ord('q'):  # Press 'q' to quit
                 break
-    except:
-        print("failed to process Eye Level")
+    except Exception as e:
+        print(f"failed to process Eye Level. Error: {e.args[0]}")
     finally:
         webcam.stop()
         webcam.release()
