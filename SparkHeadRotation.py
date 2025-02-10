@@ -5,6 +5,7 @@ import os
 from Webcam import WebcamCapture
 import numpy as np
 from utils import utils
+import time
 
 class SparkHeadRotation:
     def __init__(self, debug=False):
@@ -25,8 +26,8 @@ class SparkHeadRotation:
         self.pose = self.mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5)
 
         # Thresholds for counting rotations
-        self.YAW_THRESHOLD = 10   # Left/Right rotation in pixles
-        self.PITCH_THRESHOLD = 10  # Up/Down rotation in pixles
+        self.YAW_THRESHOLD = 35   # Left/Right rotation in pixles
+        self.PITCH_THRESHOLD = 35  # Up/Down rotation in pixles
     
     def calculate_head_rotation(self, landmarks, h, w):
         """
@@ -71,7 +72,7 @@ class SparkHeadRotation:
             landmarks = result.pose_landmarks.landmark
             yaw, pitch = self.calculate_head_rotation(landmarks, h, w)
 
-            if self.BasePostureCounter < 40:
+            if self.BasePostureCounter < 100:
                 self.YawBasePosture = self.YawBasePosture*0.2+yaw*0.8
                 self.PitchBasePosture = self.PitchBasePosture*0.2+pitch*0.8
                 self.BasePostureCounter = self.BasePostureCounter+1
@@ -136,6 +137,7 @@ if __name__ == "__main__":
     try:
         webcam.init()
         webcam.start()
+        time.sleep(2.5)
         while True:
             _frame = webcam.get_frame()
             if _frame is not None:
