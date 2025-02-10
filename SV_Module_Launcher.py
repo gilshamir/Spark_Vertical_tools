@@ -29,7 +29,10 @@ class SparkVerticalStateMachine:
                     _frame = self.webcam.get_frame()
                     if _frame is not None:
                         processed_frame, landmarks = self.spark_eye_level.process(_frame)
-                        self.dm.set_FaceFeatures(landmarks)
+                        if landmarks:
+                            display_height = self.spark_eye_level.calculate_projection_height(processed_frame)
+                            self.dm.set_FaceFeatures(landmarks)
+                            self.dm.set_FaceDisplayHeight(display_height)
                         cv2.imshow("Spark Eye Level", processed_frame)
                     if cv2.waitKey(1) & 0xFF == ord('q'):  # Press 'q' to quit
                         break

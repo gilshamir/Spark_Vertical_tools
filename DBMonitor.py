@@ -99,6 +99,10 @@ class DBMonitor:
         if landmarks is not None:
             results = self.execute('UPDATE InteractivitySync SET bridge_x=?, bridge_y=?', (landmarks))
 
+    def set_FaceDisplayHeight(self, height):
+        if height is not None:
+            results = self.execute('UPDATE InteractivitySync SET display_height=?', (height,))
+
     def set_HeadRotations(self, rotations):
         if rotations is not None:
             results = self.execute('UPDATE InteractivitySync SET rotations=?', (rotations,))

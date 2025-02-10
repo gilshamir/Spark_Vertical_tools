@@ -115,7 +115,8 @@ if __name__ == "__main__":
                 processed_frame, landmarks = el.process(_frame)
                 if landmarks:
                     display_height = el.calculate_projection_height(processed_frame)
-                dm.set_FaceFeatures(landmarks)
+                    dm.set_FaceFeatures(landmarks)
+                    dm.set_FaceDisplayHeight(display_height)
                 cv2.imshow("Pupil Connection", processed_frame)
             if cv2.waitKey(1) & 0xFF == ord('q'):  # Press 'q' to quit
                 break
