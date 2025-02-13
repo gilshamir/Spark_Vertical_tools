@@ -18,8 +18,8 @@ class SparkEyeLevel:
         self.ccd_px_size = 0.005 #in mm
         self.ccd_height_px = 1280 #
         self.screen_height_mm = 700
-        self.camera_above_screen = 15
-        self.ccd_ang = 27 * np.pi / 180
+        self.camera_above_screen = 55
+        self.ccd_ang = 26 * np.pi / 180
         self.patient_distance = 600
         self.screen_height_px = 1920
         
@@ -45,11 +45,12 @@ class SparkEyeLevel:
     def process(self, frame):
         # Process the frame to detect the face and landmarks
         results = self.face_mesh.process(frame)
+        h, w, _ = frame.shape
+        new_frame = np.zeros((h, w, 3), dtype=np.uint8)
 
         if results.multi_face_landmarks:
             for face_landmarks in results.multi_face_landmarks:
                 # Convert normalized coordinates to pixel coordinates
-                h, w, _ = frame.shape
                 if self._LINE_TYPE == 'HORIZONTAL' or self._LINE_TYPE == 'BOTH':
                     bridge_r = face_landmarks.landmark[self._BRIDGR_C_INDEX]
                     bridge_c = face_landmarks.landmark[self._BRIDGR_C_INDEX]
@@ -60,7 +61,7 @@ class SparkEyeLevel:
                     self.landmarks = [bridge_c_x_coord,bridge_c_y_coord]
                     #self.dm.set_FaceFeatures(landmarks)
                     if self._IS_DEBUG:
-                        cv2.line(frame, (0, bridge_c_y_coord), (w, bridge_c_y_coord), (0, 255, 255), 3)
+                        cv2.line(new_frame, (0, bridge_c_y_coord), (w, bridge_c_y_coord), (0, 255, 255), 3)
 
                 if self._LINE_TYPE == 'PUPILS' or self._LINE_TYPE == 'BOTH':
                     # Get the pupil points by their indices
@@ -70,12 +71,12 @@ class SparkEyeLevel:
                     (left_eye_x_coord, left_eye_y_coord) = utils.coordinates_to_pixles(w,h,left_eye.x,left_eye.y)
                     if self._IS_DEBUG:
                         # Draw the pupils
-                        cv2.circle(frame, (left_eye_x_coord, left_eye_y_coord), 3, (255, 0, 0), -1)
-                        cv2.circle(frame, (right_eye_x_coord, right_eye_y_coord), 3, (255, 0, 0), -1)
+                        cv2.circle(new_frame, (left_eye_x_coord, left_eye_y_coord), 3, (255, 0, 0), -1)
+                        cv2.circle(new_frame, (right_eye_x_coord, right_eye_y_coord), 3, (255, 0, 0), -1)
                         # Draw a line connecting the pupils
-                        cv2.line(frame, (left_eye_x_coord, left_eye_y_coord), (right_eye_x_coord, right_eye_y_coord), (0, 255, 0), 3)
+                        cv2.line(new_frame, (left_eye_x_coord, left_eye_y_coord), (right_eye_x_coord, right_eye_y_coord), (0, 255, 0), 3)
         
-        return (frame, self.landmarks)
+        return (new_frame, self.landmarks)
     
     def calculate_projection_height(self, frame):
         h, w, _ = frame.shape
@@ -87,10 +88,10 @@ class SparkEyeLevel:
         alpha = np.arctan(dy_mm / self.focal_length)
         phi = self.ccd_ang - alpha
         reqiredHeight = self.patient_distance * np.tan(phi) - self.camera_above_screen
-        reqiredHeight = reqiredHeight * self.screen_height_px / self.screen_height_mm
+        reqiredHeight = int(reqiredHeight * self.screen_height_px / self.screen_height_mm)
         if self._IS_DEBUG:
             print(reqiredHeight)
-            cv2.line(frame, (0, int(reqiredHeight)), (w, int(reqiredHeight)), (0, 0, 222), 3)
+            cv2.line(frame, (0, reqiredHeight), (w, reqiredHeight), (0, 0, 222), 3)
         return reqiredHeight
     
 if __name__ == "__main__":
