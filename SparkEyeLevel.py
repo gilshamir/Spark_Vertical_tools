@@ -109,23 +109,25 @@ class SparkEyeLevel:
     
     def calculate_patient_distance(self, frame):
         h, w, _ = frame.shape
-        bridge_x, bridge_y = self.landmarks
-        midImageHeight = h/2
-        dy_pixels = midImageHeight-bridge_y
-        dy_mm = dy_pixels * self.ccd_px_size * self.ccd_height_px / h
+        patientDistance = 0
+        if self.landmarks:
+            bridge_x, bridge_y = self.landmarks
+            midImageHeight = h/2
+            dy_pixels = midImageHeight-bridge_y
+            dy_mm = dy_pixels * self.ccd_px_size * self.ccd_height_px / h
 
-        pd_px =  self.pd_px
-        pd_mm = 63
-        px2mm = pd_mm / pd_px
-        alpha = np.arctan(dy_mm / self.focal_length)
-        #beta = np.pi / 2 - self.ccd_ang
-        phi = self.ccd_ang - alpha
-        a = dy_pixels * px2mm
-        c = a / np.sin(alpha)
-        patientDistance = c * np.cos(phi)
+            pd_px =  self.pd_px
+            pd_mm = 63
+            px2mm = pd_mm / pd_px
+            alpha = np.arctan(dy_mm / self.focal_length)
+            #beta = np.pi / 2 - self.ccd_ang
+            phi = self.ccd_ang - alpha
+            a = dy_pixels * px2mm
+            c = a / np.sin(alpha)
+            patientDistance = c * np.cos(phi)
 
-        if self._IS_DEBUG:
-            print(patientDistance)
+            if self._IS_DEBUG:
+                print(patientDistance)
         return patientDistance
         
 if __name__ == "__main__":
