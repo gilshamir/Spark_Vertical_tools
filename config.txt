@@ -1,4 +1,4 @@
-C:\Users\gill\OneDrive - Shamir Optical Industry Ltd\Projects\Spark_Vertical_tools
+C:\temp\SparkSyncDb
 0.33
 false
 6

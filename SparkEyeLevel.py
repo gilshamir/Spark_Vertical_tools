@@ -15,7 +15,7 @@ class SparkEyeLevel:
         self.face_mesh = self.mp_face_mesh.FaceMesh(min_detection_confidence=0.5, min_tracking_confidence=0.5)
 
         self.focal_length = 8 #in mm
-        self.ccd_px_size = 0.005 #in mm
+        self.ccd_px_size = 0.006 #in mm
         self.ccd_height_px = 1280 #
         self.screen_height_mm = 700
         self.camera_above_screen = 55
@@ -117,7 +117,7 @@ class SparkEyeLevel:
             dy_mm = dy_pixels * self.ccd_px_size * self.ccd_height_px / h
 
             pd_px =  self.pd_px
-            pd_mm = 63
+            pd_mm = 60
             px2mm = pd_mm / pd_px
             alpha = np.arctan(dy_mm / self.focal_length)
             #beta = np.pi / 2 - self.ccd_ang
@@ -151,8 +151,8 @@ if __name__ == "__main__":
             if _frame is not None:
                 processed_frame, landmarks = el.process(_frame)
                 if landmarks:
-                    #display_height = el.calculate_projection_height(processed_frame)
-                    patient_distance = el.calculate_patient_distance(processed_frame)
+                    display_height = el.calculate_projection_height(processed_frame)
+                    #patient_distance = el.calculate_patient_distance(processed_frame)
                     #dm.set_FaceFeatures(landmarks)
                     #dm.set_FaceDisplayHeight(display_height)
                 cv2.imshow("Pupil Connection", processed_frame)
