@@ -38,7 +38,6 @@ class SparkVerticalStateMachine:
                     patient_distance = self.spark_eye_level.calculate_patient_distance(_frame)
                     if (patient_distance < 700 and patient_distance > 500):
                         self.dm.set_UpdateState(State.NaturalPosture.value)
-                    cv2.imshow("Spark Head Rotation", processed_frame)
                 if cv2.waitKey(1) & 0xFF == ord('q'):  # Press 'q' to quit
                     cv2.destroyAllWindows()
                     break
@@ -51,7 +50,6 @@ class SparkVerticalStateMachine:
                     if head_rotations >= 2:
                         self.dm.set_UpdateState(State.Gaze.value)
                         cv2.destroyAllWindows()
-                    cv2.imshow("Spark Head Rotation", processed_frame)
                 if cv2.waitKey(1) & 0xFF == ord('q'):  # Press 'q' to quit
                     cv2.destroyAllWindows()
                     break
@@ -72,7 +70,6 @@ class SparkVerticalStateMachine:
                     else:
                         prev_pitch = pitch
                         prev_yaw = yaw
-                    cv2.imshow("Spark Head Rotation", processed_frame)
                 if cv2.waitKey(1) & 0xFF == ord('q'):  # Press 'q' to quit
                     cv2.destroyAllWindows()
                     break

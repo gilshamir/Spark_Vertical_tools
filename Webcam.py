@@ -3,7 +3,7 @@ import threading
 from utils import utils
 
 class WebcamCapture:
-    def __init__(self, source=1):
+    def __init__(self, source=0):
         self.source = source
         self.capture = None
         self.frame = None
