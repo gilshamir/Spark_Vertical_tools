@@ -104,4 +104,4 @@ try:
 finally:
     sm.webcam.stop()
     sm.webcam.release()
-    sm.destroyAllWindows()
+    cv2.destroyAllWindows()
