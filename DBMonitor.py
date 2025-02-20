@@ -106,6 +106,10 @@ class DBMonitor:
     def set_HeadRotations(self, rotations):
         if rotations is not None:
             results = self.execute('UPDATE InteractivitySync SET rotations=?', (rotations,))
+    
+    def set_UpdateState(self, state):
+        if state is not None:
+            results = self.execute('UPDATE BreezeSessionSync SET ProcessState=?', (state,))
 
 if __name__ == '__main__':
     def my_callback(raw_data):

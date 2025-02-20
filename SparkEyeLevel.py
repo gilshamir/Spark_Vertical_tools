@@ -31,6 +31,10 @@ class SparkEyeLevel:
         self._RIGHT_EYE_TEMPORAL_INDEX = 33
         self._LEFT_EYE_TEMPORAL_INDEX = 263
 
+        #pupils
+        self._RIGHT_EYE_PUPIL_INDEX = 159
+        self._LEFT_EYE_PUPIL_INDEX = 385
+
         # Define the index for the bridge
         self._BRIDGR_R_INDEX = 193
         self._BRIDGR_C_INDEX = 168
@@ -41,6 +45,7 @@ class SparkEyeLevel:
         # BOTH - both lines
         self._LINE_TYPE = 'BOTH' # 'PUPILS' # 'HORIZONTAL'
         self.landmarks = []
+        self.pd_px = 0
         
     def process(self, frame):
         # Process the frame to detect the face and landmarks
@@ -52,13 +57,21 @@ class SparkEyeLevel:
             for face_landmarks in results.multi_face_landmarks:
                 # Convert normalized coordinates to pixel coordinates
                 if self._LINE_TYPE == 'HORIZONTAL' or self._LINE_TYPE == 'BOTH':
-                    bridge_r = face_landmarks.landmark[self._BRIDGR_C_INDEX]
+                    bridge_r = face_landmarks.landmark[self._BRIDGR_R_INDEX]
                     bridge_c = face_landmarks.landmark[self._BRIDGR_C_INDEX]
-                    bridge_l = face_landmarks.landmark[self._BRIDGR_C_INDEX]
+                    bridge_l = face_landmarks.landmark[self._BRIDGR_L_INDEX]
                     (bridge_r_x_coord, bridge_r_y_coord) = utils.coordinates_to_pixles(w,h,bridge_r.x,bridge_r.y)
                     (bridge_c_x_coord, bridge_c_y_coord) = utils.coordinates_to_pixles(w,h,bridge_c.x,bridge_c.y)
                     (bridge_l_x_coord, bridge_l_y_coord) = utils.coordinates_to_pixles(w,h,bridge_l.x,bridge_l.y)
                     self.landmarks = [bridge_c_x_coord,bridge_c_y_coord]
+
+                    #pupils location
+                    pupil_r = face_landmarks.landmark[self._LEFT_EYE_PUPIL_INDEX]
+                    pupil_l = face_landmarks.landmark[self._RIGHT_EYE_PUPIL_INDEX]
+                    (pupil_r_x_coord, pupil_r_y_coord) = utils.coordinates_to_pixles(w,h,pupil_r.x,pupil_r.y)
+                    (pupil_l_x_coord, pupil_l_y_coord) = utils.coordinates_to_pixles(w,h,pupil_l.x,pupil_l.y)
+                    self.pd_px = int(np.sqrt(np.square(pupil_r_x_coord-pupil_l_x_coord)+np.square(pupil_r_y_coord-pupil_l_y_coord)))
+                    
                     #self.dm.set_FaceFeatures(landmarks)
                     if self._IS_DEBUG:
                         cv2.line(new_frame, (0, bridge_c_y_coord), (w, bridge_c_y_coord), (0, 255, 255), 3)
@@ -80,9 +93,9 @@ class SparkEyeLevel:
     
     def calculate_projection_height(self, frame):
         h, w, _ = frame.shape
-        x, y = self.landmarks
+        bridge_x, bridge_y = self.landmarks
         midImageHeight = h/2
-        dy_pixels = midImageHeight-y
+        dy_pixels = midImageHeight-bridge_y
         dy_mm = dy_pixels * self.ccd_px_size * self.ccd_height_px / h
 
         alpha = np.arctan(dy_mm / self.focal_length)
@@ -94,6 +107,27 @@ class SparkEyeLevel:
             cv2.line(frame, (0, reqiredHeight), (w, reqiredHeight), (0, 0, 222), 3)
         return reqiredHeight
     
+    def calculate_patient_distance(self, frame):
+        h, w, _ = frame.shape
+        bridge_x, bridge_y = self.landmarks
+        midImageHeight = h/2
+        dy_pixels = midImageHeight-bridge_y
+        dy_mm = dy_pixels * self.ccd_px_size * self.ccd_height_px / h
+
+        pd_px =  self.pd_px
+        pd_mm = 63
+        px2mm = pd_mm / pd_px
+        alpha = np.arctan(dy_mm / self.focal_length)
+        #beta = np.pi / 2 - self.ccd_ang
+        phi = self.ccd_ang - alpha
+        a = dy_pixels * px2mm
+        c = a / np.sin(alpha)
+        patientDistance = c * np.cos(phi)
+
+        if self._IS_DEBUG:
+            print(patientDistance)
+        return patientDistance
+        
 if __name__ == "__main__":
     # Read the database directory from the first line of the config file
     with open('config.txt', 'r') as file:
@@ -115,9 +149,10 @@ if __name__ == "__main__":
             if _frame is not None:
                 processed_frame, landmarks = el.process(_frame)
                 if landmarks:
-                    display_height = el.calculate_projection_height(processed_frame)
-                    dm.set_FaceFeatures(landmarks)
-                    dm.set_FaceDisplayHeight(display_height)
+                    #display_height = el.calculate_projection_height(processed_frame)
+                    patient_distance = el.calculate_patient_distance(processed_frame)
+                    #dm.set_FaceFeatures(landmarks)
+                    #dm.set_FaceDisplayHeight(display_height)
                 cv2.imshow("Pupil Connection", processed_frame)
             if cv2.waitKey(1) & 0xFF == ord('q'):  # Press 'q' to quit
                 break

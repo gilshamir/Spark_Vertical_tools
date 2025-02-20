@@ -11,6 +11,8 @@ from states import State
 class SparkVerticalStateMachine:
     def __init__(self, spark_eye_level, spark_head_rotation, webcam, dm):
         self.state = None  # Initial state
+        
+        #All the modules are local properties of this state machine
         self.spark_eye_level = spark_eye_level
         self.spark_head_rotation = spark_head_rotation
         self.webcam = webcam
@@ -21,7 +23,10 @@ class SparkVerticalStateMachine:
         """
         Transitions between states based on the input command.
         """
-        if self.current_state() == State.MeasurementStart:
+        if self.current_state() == State.MeasurementStart.value:
+            print(f"doing state: {State.MeasurementStart}")
+            x=1
+            '''
             try:
                 self.webcam.init()
                 self.webcam.start()
@@ -40,11 +45,35 @@ class SparkVerticalStateMachine:
                 self.webcam.stop()
                 self.webcam.release()
                 cv2.destroyAllWindows()
-        elif self.current_state() == State.NaturalPosture:
+            '''
+        elif self.current_state() == State.Welcome.value:
+            print(f"doing state: {State.Welcome}")
+            x=2
+        elif self.current_state() == State.Position.value:
+            print(f"doing state: {State.Position}")
             try:
                 self.webcam.init()
                 self.webcam.start()
-                while self.current_state() == State.NaturalPosture:
+                while self.current_state() == State.Position.value:
+                    _frame = self.webcam.get_frame()
+                    if _frame is not None:
+                        self.spark_eye_level.process(_frame)
+                        patient_distance = self.spark_eye_level.calculate_patient_distance(_frame)
+                        if (patient_distance < 700 and patient_distance > 500):
+                            self.dm.set_UpdateState(State.NaturalPosture.value)
+                            # set timout                            
+                    if cv2.waitKey(1) & 0xFF == ord('q'):  # Press 'q' to quit
+                        break
+            finally:
+                self.webcam.stop()
+                self.webcam.release()
+                cv2.destroyAllWindows()
+        elif self.current_state() == State.NaturalPosture.value:
+            print(f"doing state: {State.NaturalPosture}")
+            try:
+                self.webcam.init()
+                self.webcam.start()
+                while self.current_state() == State.NaturalPosture.value:
                     _frame = self.webcam.get_frame()
                     if _frame is not None:
                         processed_frame, landmarks = self.spark_head_rotation.process(_frame)
