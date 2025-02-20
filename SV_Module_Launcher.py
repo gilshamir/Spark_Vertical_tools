@@ -73,6 +73,26 @@ class SparkVerticalStateMachine:
                 if cv2.waitKey(1) & 0xFF == ord('q'):  # Press 'q' to quit
                     cv2.destroyAllWindows()
                     break
+        elif self.current_state() == State.CustomerReadyForCapture.value:
+            print(f"Current State: {State.CustomerReadyForCapture}")
+        elif self.current_state() == State.CaptureStarted.value:
+            print(f"Current State: {State.CaptureStarted}")
+        elif self.current_state() == State.CaptureCompleted.value:
+            print(f"Current State: {State.CaptureCompleted}")
+        elif self.current_state() == State.CameraInHomePosition.value:
+            print(f"Current State: {State.CameraInHomePosition}")
+        elif self.current_state() == State.SparkResultsReady.value:
+            print(f"Current State: {State.SparkResultsReady}")
+        elif self.current_state() == State.MeasurementCompleted.value:
+            print(f"Current State: {State.MeasurementCompleted}")
+        elif self.current_state() == State.GeneralMeasurementFault.value:
+            print(f"Current State: {State.GeneralMeasurementFault}")
+        elif self.current_state() == State.RetakePicture.value:
+            print(f"Current State: {State.RetakePicture}")
+        elif self.current_state() == State.SkipToNext.value:
+            print(f"Current State: {State.SkipToNext}")
+        elif self.current_state() == State.Idle.value:
+            print(f"Current State: {State.Idle}")        
         else:
             print(f"Nothing to do for state: {self.current_state()}")
 
