@@ -7,6 +7,7 @@ from Webcam import WebcamCapture
 from SparkEyeLevel import SparkEyeLevel
 from SparkHeadRotation import SparkHeadRotation
 from states import State
+import numpy as np
 
 class SparkVerticalStateMachine:
     def __init__(self, spark_eye_level, spark_head_rotation, webcam, dm):
@@ -46,15 +47,35 @@ class SparkVerticalStateMachine:
             while self.current_state() == State.NaturalPosture.value:
                 _frame = self.webcam.get_frame()
                 if _frame is not None:
-                    processed_frame, head_rotations = self.spark_head_rotation.process(_frame)
+                    processed_frame, head_rotations, _, _ = self.spark_head_rotation.process(_frame)
                     if head_rotations >= 2:
                         self.dm.set_UpdateState(State.Gaze.value)
+                        cv2.destroyAllWindows()
                     cv2.imshow("Spark Head Rotation", processed_frame)
                 if cv2.waitKey(1) & 0xFF == ord('q'):  # Press 'q' to quit
                     cv2.destroyAllWindows()
                     break
         elif self.current_state() == State.Gaze.value:
             print(f"Current State: {State.Gaze}")
+            prev_yaw = np.Infinity
+            prev_pitch = np.Infinity
+            while self.current_state() == State.Gaze.value:
+                time.sleep(1)
+                _frame = self.webcam.get_frame()
+                if _frame is not None:
+                    processed_frame, head_rotation_count, yaw, pitch = self.spark_head_rotation.process(_frame)
+                    delta_yaw = np.abs(yaw-prev_yaw)
+                    delta_pitch = np.abs(pitch-prev_pitch)
+                    if delta_yaw <= 1 and delta_pitch <= 1:
+                        self.dm.set_UpdateState(State.CustomerReadyForCapture.value)
+                        cv2.destroyAllWindows()
+                    else:
+                        prev_pitch = pitch
+                        prev_yaw = yaw
+                    cv2.imshow("Spark Head Rotation", processed_frame)
+                if cv2.waitKey(1) & 0xFF == ord('q'):  # Press 'q' to quit
+                    cv2.destroyAllWindows()
+                    break
         else:
             print(f"Nothing to do for state: {self.current_state()}")
 
@@ -104,4 +125,4 @@ try:
 finally:
     sm.webcam.stop()
     sm.webcam.release()
-    sm.destroyAllWindows()
+    cv2.destroyAllWindows()
