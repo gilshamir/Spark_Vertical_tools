@@ -118,14 +118,7 @@ class SparkHeadRotation:
                 cv2.putText(frame, f'Rotations: {self.head_rotation_count} ', (10, 110),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 0, 0), 1, cv2.LINE_AA)
                     
-        return (frame, self.head_rotation_count)
-    
-    def is_patient_in_place(self, frame):
-        # Process the image and extract landmarks
-        result = self.pose.process(frame)
-        h, w, _ = frame.shape
-
-        
+        return (frame, self.head_rotation_count)        
 
 if __name__ == "__main__":
     # Read the database directory from the first line of the config file

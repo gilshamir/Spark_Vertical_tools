@@ -24,67 +24,37 @@ class SparkVerticalStateMachine:
         Transitions between states based on the input command.
         """
         if self.current_state() == State.MeasurementStart.value:
-            print(f"doing state: {State.MeasurementStart}")
-            x=1
-            '''
-            try:
-                self.webcam.init()
-                self.webcam.start()
-                while self.current_state() == State.MeasurementStart:
-                    _frame = self.webcam.get_frame()
-                    if _frame is not None:
-                        processed_frame, landmarks = self.spark_eye_level.process(_frame)
-                        if landmarks:
-                            display_height = self.spark_eye_level.calculate_projection_height(processed_frame)
-                            self.dm.set_FaceFeatures(landmarks)
-                            self.dm.set_FaceDisplayHeight(display_height)
-                        cv2.imshow("Spark Eye Level", processed_frame)
-                    if cv2.waitKey(1) & 0xFF == ord('q'):  # Press 'q' to quit
-                        break
-            finally:
-                self.webcam.stop()
-                self.webcam.release()
-                cv2.destroyAllWindows()
-            '''
+            print(f"Current State: {State.MeasurementStart}")
         elif self.current_state() == State.Welcome.value:
-            print(f"doing state: {State.Welcome}")
-            x=2
+            print(f"Current State: {State.Welcome}")
         elif self.current_state() == State.Position.value:
-            print(f"doing state: {State.Position}")
-            try:
-                self.webcam.init()
-                self.webcam.start()
-                while self.current_state() == State.Position.value:
-                    _frame = self.webcam.get_frame()
-                    if _frame is not None:
-                        self.spark_eye_level.process(_frame)
-                        patient_distance = self.spark_eye_level.calculate_patient_distance(_frame)
-                        if (patient_distance < 700 and patient_distance > 500):
-                            self.dm.set_UpdateState(State.NaturalPosture.value)
-                            # set timout                            
-                    if cv2.waitKey(1) & 0xFF == ord('q'):  # Press 'q' to quit
-                        break
-            finally:
-                self.webcam.stop()
-                self.webcam.release()
-                cv2.destroyAllWindows()
+            print(f"Current State: {State.Position}")
+        
+            while self.current_state() == State.Position.value:
+                _frame = self.webcam.get_frame()
+                if _frame is not None:
+                    processed_frame, _ = self.spark_eye_level.process(_frame)
+                    patient_distance = self.spark_eye_level.calculate_patient_distance(_frame)
+                    if (patient_distance < 700 and patient_distance > 500):
+                        self.dm.set_UpdateState(State.NaturalPosture.value)
+                    cv2.imshow("Spark Head Rotation", processed_frame)
+                if cv2.waitKey(1) & 0xFF == ord('q'):  # Press 'q' to quit
+                    cv2.destroyAllWindows()
+                    break
         elif self.current_state() == State.NaturalPosture.value:
-            print(f"doing state: {State.NaturalPosture}")
-            try:
-                self.webcam.init()
-                self.webcam.start()
-                while self.current_state() == State.NaturalPosture.value:
-                    _frame = self.webcam.get_frame()
-                    if _frame is not None:
-                        processed_frame, landmarks = self.spark_head_rotation.process(_frame)
-                        self.dm.set_HeadRotations(landmarks)
-                        cv2.imshow("Spark Head Rotation", processed_frame)
-                    if cv2.waitKey(1) & 0xFF == ord('q'):  # Press 'q' to quit
-                        break
-            finally:
-                self.webcam.stop()
-                self.webcam.release()
-                cv2.destroyAllWindows()
+            print(f"Current State: {State.NaturalPosture}")
+            while self.current_state() == State.NaturalPosture.value:
+                _frame = self.webcam.get_frame()
+                if _frame is not None:
+                    processed_frame, head_rotations = self.spark_head_rotation.process(_frame)
+                    if head_rotations >= 2:
+                        self.dm.set_UpdateState(State.Gaze.value)
+                    cv2.imshow("Spark Head Rotation", processed_frame)
+                if cv2.waitKey(1) & 0xFF == ord('q'):  # Press 'q' to quit
+                    cv2.destroyAllWindows()
+                    break
+        elif self.current_state() == State.Gaze.value:
+            print(f"Current State: {State.Gaze}")
         else:
             print(f"Nothing to do for state: {self.current_state()}")
 
@@ -123,8 +93,15 @@ db_monitor.run(setMachineState)
 #hold the previous state so that the state machine transitions will occur only once
 previous_state = None
 
-while True:
-    current_state = sm.current_state() #get the current state
-    if current_state != previous_state: #if it has changed
-        sm.transition() #transit
-        previous_state = current_state #save the state
+try:
+    sm.webcam.init()
+    sm.webcam.start()
+    while True:
+        current_state = sm.current_state() #get the current state
+        if current_state != previous_state: #if it has changed
+            sm.transition() #transit
+            previous_state = current_state #save the state
+finally:
+    sm.webcam.stop()
+    sm.webcam.release()
+    sm.destroyAllWindows()
