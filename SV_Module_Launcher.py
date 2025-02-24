@@ -57,8 +57,12 @@ class SparkVerticalStateMachine:
             print(f"Current State: {State.Gaze}")
             prev_yaw = np.Infinity
             prev_pitch = np.Infinity
+            counter = 0
             while self.current_state() == State.Gaze.value:
-                time.sleep(1)
+                if counter%25 != 0:
+                    counter += 1
+                    continue
+                counter = 1
                 _frame = self.webcam.get_frame()
                 if _frame is not None:
                     processed_frame, head_rotation_count, yaw, pitch = self.spark_head_rotation.process(_frame)

@@ -7,7 +7,7 @@ from utils import utils
 import numpy as np
 
 class SparkEyeLevel:
-    def __init__(self, debug=False):
+    def __init__(self, debug=True):
         self._IS_DEBUG = debug 
 
         # Initialize MediaPipe Face Mesh
