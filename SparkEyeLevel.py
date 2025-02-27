@@ -93,19 +93,24 @@ class SparkEyeLevel:
     
     def calculate_projection_height(self, frame):
         h, w, _ = frame.shape
-        bridge_x, bridge_y = self.landmarks
-        midImageHeight = h/2
-        dy_pixels = midImageHeight-bridge_y
-        dy_mm = dy_pixels * self.ccd_px_size * self.ccd_height_px / h
+        reqiredHeight = int(h/2)
+        if self.landmarks:
+            bridge_x, bridge_y = self.landmarks
+            midImageHeight = h/2
+            dy_pixels = midImageHeight-bridge_y
+            dy_mm = dy_pixels * self.ccd_px_size * self.ccd_height_px / h
 
-        alpha = np.arctan(dy_mm / self.focal_length)
-        phi = self.ccd_ang - alpha
-        reqiredHeight = self.patient_distance * np.tan(phi) - self.camera_above_screen
-        reqiredHeight = int(reqiredHeight * self.screen_height_px / self.screen_height_mm)
-        if self._IS_DEBUG:
-            print(reqiredHeight)
-            cv2.line(frame, (0, reqiredHeight), (w, reqiredHeight), (0, 0, 222), 3)
+            alpha = np.arctan(dy_mm / self.focal_length)
+            phi = self.ccd_ang - alpha
+            reqiredHeight = self.patient_distance * np.tan(phi) - self.camera_above_screen
+            reqiredHeight = int(reqiredHeight * self.screen_height_px / self.screen_height_mm)
+            if self._IS_DEBUG:
+                print(reqiredHeight)
+                cv2.line(frame, (0, reqiredHeight), (w, reqiredHeight), (0, 0, 222), 3)
+                #cv2.line(frame, (0, int(h/2)), (w, int(h/2)), (0, 0, 222), 3)
         return reqiredHeight
+        #return int(h/2)
+        
     
     def calculate_patient_distance(self, frame):
         h, w, _ = frame.shape
@@ -129,6 +134,9 @@ class SparkEyeLevel:
             if self._IS_DEBUG:
                 print(patientDistance)
         return patientDistance
+    
+    def reset(self):
+        self.landmarks = []
         
 if __name__ == "__main__":
     # Read the database directory from the first line of the config file

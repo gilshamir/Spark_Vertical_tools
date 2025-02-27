@@ -58,6 +58,8 @@ class SparkHeadRotation:
         # Process the image and extract landmarks
         result = self.pose.process(frame)
         h, w, _ = frame.shape
+        yaw = None
+        pitch = None
 
         if result.pose_landmarks:
             # Draw pose landmarks on the frame
@@ -120,6 +122,19 @@ class SparkHeadRotation:
                     
         return (frame, self.head_rotation_count, yaw, pitch)        
 
+    def reset(self):
+        self.YawBasePosture = 0
+        self.PitchBasePosture = 0
+        #self.BasePostureCounter = 0
+        self.yaw_count = 0
+        self.pitch_count = 0
+        self.head_rotation_count = 0
+        self.yaw_crossed = False
+        self.pitch_crossed = False
+    
+    def resetBasePosture(self):
+        self.BasePostureCounter = 0
+
 if __name__ == "__main__":
     # Read the database directory from the first line of the config file
     with open('config.txt', 'r') as file:
@@ -140,8 +155,10 @@ if __name__ == "__main__":
         while True:
             _frame = webcam.get_frame()
             if _frame is not None:
+                hr.BasePostureCounter = 50
                 processed_frame, head_rotations, yaw, pitch = hr.process(_frame)
                 print(yaw, pitch, head_rotations)
+                time.sleep(0.3)
                 #dm.set_HeadRotations(head_rotations)
                 cv2.imshow("Pupil Connection", processed_frame)
             if cv2.waitKey(1) & 0xFF == ord('q'):  # Press 'q' to quit

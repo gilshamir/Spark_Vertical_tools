@@ -24,18 +24,24 @@ class SparkVerticalStateMachine:
         """
         Transitions between states based on the input command.
         """
-        if self.current_state() == State.MeasurementStart.value:
+        if self.current_state() == State.CommercialVideoState.value:
+            print(f"Current State: {State.CommercialVideoState}")
+        elif self.current_state() == State.MeasurementStart.value:
             print(f"Current State: {State.MeasurementStart}")
         elif self.current_state() == State.Welcome.value:
             print(f"Current State: {State.Welcome}")
         elif self.current_state() == State.Position.value:
             print(f"Current State: {State.Position}")
+            self.spark_eye_level.reset()
+            self.spark_head_rotation.reset()
+            self.spark_head_rotation.resetBasePosture()
         
             while self.current_state() == State.Position.value:
                 _frame = self.webcam.get_frame()
                 if _frame is not None:
                     processed_frame, _ = self.spark_eye_level.process(_frame)
                     patient_distance = self.spark_eye_level.calculate_patient_distance(_frame)
+                    
                     if (patient_distance < 700 and patient_distance > 500):
                         self.dm.set_UpdateState(State.NaturalPosture.value)
                 if cv2.waitKey(1) & 0xFF == ord('q'):  # Press 'q' to quit
@@ -57,38 +63,47 @@ class SparkVerticalStateMachine:
             print(f"Current State: {State.Gaze}")
             prev_yaw = np.Infinity
             prev_pitch = np.Infinity
-            counter = 0
             while self.current_state() == State.Gaze.value:
-                if counter%25 != 0:
-                    counter += 1
-                    continue
-                counter = 1
                 _frame = self.webcam.get_frame()
                 if _frame is not None:
                     processed_frame, head_rotation_count, yaw, pitch = self.spark_head_rotation.process(_frame)
+                    if yaw == None or pitch == None:
+                        continue
                     delta_yaw = np.abs(yaw-prev_yaw)
                     delta_pitch = np.abs(pitch-prev_pitch)
                     if delta_yaw <= 1 and delta_pitch <= 1:
+                        patient_height = self.spark_eye_level.calculate_projection_height(_frame)
+                        #add average value
+                        self.dm.set_FaceDisplayHeight(patient_height)
                         self.dm.set_UpdateState(State.CustomerReadyForCapture.value)
                         cv2.destroyAllWindows()
                     else:
                         prev_pitch = pitch
                         prev_yaw = yaw
+                        time.sleep(0.3)
                 if cv2.waitKey(1) & 0xFF == ord('q'):  # Press 'q' to quit
                     cv2.destroyAllWindows()
                     break
         elif self.current_state() == State.CustomerReadyForCapture.value:
             print(f"Current State: {State.CustomerReadyForCapture}")
+            self.spark_eye_level.reset()
+            self.spark_head_rotation.reset()
         elif self.current_state() == State.CaptureStarted.value:
             print(f"Current State: {State.CaptureStarted}")
         elif self.current_state() == State.CaptureCompleted.value:
             print(f"Current State: {State.CaptureCompleted}")
         elif self.current_state() == State.CameraInHomePosition.value:
             print(f"Current State: {State.CameraInHomePosition}")
+            #time.sleep(40)
+            #self.dm.set_UpdateState(State.SparkResultsReady.value)
         elif self.current_state() == State.SparkResultsReady.value:
             print(f"Current State: {State.SparkResultsReady}")
+            #time.sleep(1)
+            #self.dm.set_UpdateState(State.MeasurementCompleted.value)
         elif self.current_state() == State.MeasurementCompleted.value:
             print(f"Current State: {State.MeasurementCompleted}")
+            #time.sleep(1)
+            #self.dm.set_UpdateState(State.CommercialVideoState.value)
         elif self.current_state() == State.GeneralMeasurementFault.value:
             print(f"Current State: {State.GeneralMeasurementFault}")
         elif self.current_state() == State.RetakePicture.value:
