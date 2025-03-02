@@ -39,8 +39,8 @@ class SparkVerticalStateMachine:
             while self.current_state() == State.Position.value:
                 _frame = self.webcam.get_frame()
                 if _frame is not None:
-                    processed_frame, _ = self.spark_eye_level.process(_frame)
-                    patient_distance = self.spark_eye_level.calculate_patient_distance(_frame)
+                    self.spark_eye_level.process(_frame)
+                    patient_distance = self.spark_eye_level.calculate_patient_distance()
                     
                     if (patient_distance < 700 and patient_distance > 500):
                         self.dm.set_UpdateState(State.NaturalPosture.value)

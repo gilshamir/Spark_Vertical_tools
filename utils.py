@@ -1,10 +1,16 @@
 import cv2
+from dataclasses import dataclass
+
+@dataclass
+class Point:
+    x: float
+    y: float
 
 class utils:
 
         @staticmethod
         def coordinates_to_pixles(w,h,x,y):
-                return (int(x * w), int(y * h))
+                return Point(int(x * w), int(y * h))
         
         @staticmethod
         def get_screen_dimensions():
