@@ -3,7 +3,7 @@ import threading
 from utils import utils
 
 class WebcamCapture:
-    def __init__(self, source=0):
+    def __init__(self, source=2):
         self.source = source
         self.capture = None
         self.frame = None
@@ -21,11 +21,30 @@ class WebcamCapture:
             #rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             if ret:
                 #rotated_frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
-                cropped_image = frame[:, 437:842]
-                resized_frame = cv2.resize(cropped_image, (self.SCREEN_RESOLUTION[0], self.SCREEN_RESOLUTION[1]))
-                self.frame = resized_frame  # Update the latest frame
+                cropped_image = self.crop_and_resize(frame, self.SCREEN_RESOLUTION[0], self.SCREEN_RESOLUTION[1]) #frame[:, 437:842]
+                #resized_frame = cv2.resize(cropped_image, (self.SCREEN_RESOLUTION[0], self.SCREEN_RESOLUTION[1]))
+                self.frame = cropped_image  # Update the latest frame
                 #self.frame = frame
+    def crop_and_resize(self, image, screen_width, screen_height):
+        # Get screen aspect ratio
+        screen_ar = screen_width / screen_height
 
+        # Get image dimensions
+        img_height, img_width = image.shape[:2]
+        img_ar = img_width / img_height
+
+        # Crop width if necessary
+        if img_ar > screen_ar:
+            new_width = int(screen_ar * img_height)
+            left = (img_width - new_width) // 2
+            right = left + new_width
+            image = image[:, left:right]  # Crop width
+
+        # Resize using cv2
+        image = cv2.resize(image, (screen_width, screen_height), interpolation=cv2.INTER_LANCZOS4)
+
+        return image  # Return the processed image as a NumPy array
+    
     def get_frame(self):
         if self.running:
             return self.frame
