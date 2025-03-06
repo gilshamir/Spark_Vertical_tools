@@ -48,10 +48,10 @@ class SparkHeadRotation:
         shoulder_midpoint_pixles = utils.coordinates_to_pixles(w,h,shoulder_midpoint[0],shoulder_midpoint[1])
 
         # Yaw: horizontal displacement of the nose relative to shoulder midpoint
-        yaw = abs(nose_pixles[0] - shoulder_midpoint_pixles[0])
+        yaw = abs(nose_pixles.y - shoulder_midpoint_pixles.y)
 
         # Pitch: vertical displacement of the nose relative to shoulder midpoint
-        pitch = abs(nose_pixles[1] - shoulder_midpoint_pixles[1])
+        pitch = abs(nose_pixles.x - shoulder_midpoint_pixles.x)
 
         return yaw, pitch
     def process(self, frame):

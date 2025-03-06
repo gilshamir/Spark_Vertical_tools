@@ -3,13 +3,13 @@ import threading
 from utils import utils
 
 class WebcamCapture:
-    def __init__(self, source=2):
+    def __init__(self, source=0):
         self.source = source
         self.capture = None
         self.frame = None
         self.running = False
         self.thread = None
-        self.CAMERA_RESOLUTION = (1280, 720)
+        self.CAMERA_RESOLUTION = (1920, 1080)
         self.SCREEN_RESOLUTION = utils.get_screen_dimensions()
 
     def _capture_loop(self):
@@ -28,10 +28,12 @@ class WebcamCapture:
     def crop_and_resize(self, image, screen_width, screen_height):
         # Get screen aspect ratio
         screen_ar = screen_width / screen_height
+        #print(f"Screen Aspect Ratio: {screen_ar}, Screen Width: {screen_width}, Screen Height: {screen_height}")
 
         # Get image dimensions
         img_height, img_width = image.shape[:2]
         img_ar = img_width / img_height
+        #print(f"Image Aspect Ratio: {img_ar}, Image Width: {img_width}, Image Height: {img_height}")
 
         # Crop width if necessary
         if img_ar > screen_ar:
@@ -39,6 +41,7 @@ class WebcamCapture:
             left = (img_width - new_width) // 2
             right = left + new_width
             image = image[:, left:right]  # Crop width
+            #print(f"image size after crop width: {image.shape}")
 
         # Resize using cv2
         image = cv2.resize(image, (screen_width, screen_height), interpolation=cv2.INTER_LANCZOS4)

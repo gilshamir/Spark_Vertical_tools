@@ -32,18 +32,25 @@ class SparkVerticalStateMachine:
             print(f"Current State: {State.Welcome}")
         elif self.current_state() == State.Position.value:
             print(f"Current State: {State.Position}")
-            self.spark_eye_level.reset()
+            
             self.spark_head_rotation.reset()
             self.spark_head_rotation.resetBasePosture()
-        
+            counter = 0
+            patient_distance_mean = 0
             while self.current_state() == State.Position.value:
                 _frame = self.webcam.get_frame()
                 if _frame is not None:
                     self.spark_eye_level.process(_frame)
                     patient_distance = self.spark_eye_level.calculate_patient_distance()
-                    
-                    if (patient_distance < 700 and patient_distance > 500):
-                        self.dm.set_UpdateState(State.NaturalPosture.value)
+                    if patient_distance is not None:
+                        if counter < 100:
+                            counter += 1
+                            patient_distance_mean = patient_distance_mean*0.5+patient_distance*0.5
+                        else:
+                            patient_distance_mean = patient_distance_mean*0.5+patient_distance*0.5
+                            if (patient_distance_mean < 700 and patient_distance_mean > 500):
+                                self.dm.set_UpdateState(State.NaturalPosture.value)
+                    print(f"Patient Distance: {patient_distance}, Patient Distance Mean: {patient_distance_mean}")
                 if cv2.waitKey(1) & 0xFF == ord('q'):  # Press 'q' to quit
                     cv2.destroyAllWindows()
                     break
@@ -72,7 +79,7 @@ class SparkVerticalStateMachine:
                     delta_yaw = np.abs(yaw-prev_yaw)
                     delta_pitch = np.abs(pitch-prev_pitch)
                     if delta_yaw <= 1 and delta_pitch <= 1:
-                        patient_height = self.spark_eye_level.calculate_projection_height(_frame)
+                        patient_height = self.spark_eye_level.calculate_patient_height()
                         #add average value
                         self.dm.set_FaceDisplayHeight(patient_height)
                         self.dm.set_UpdateState(State.CustomerReadyForCapture.value)
@@ -86,7 +93,7 @@ class SparkVerticalStateMachine:
                     break
         elif self.current_state() == State.CustomerReadyForCapture.value:
             print(f"Current State: {State.CustomerReadyForCapture}")
-            self.spark_eye_level.reset()
+            #self.spark_eye_level.reset()
             self.spark_head_rotation.reset()
         elif self.current_state() == State.CaptureStarted.value:
             print(f"Current State: {State.CaptureStarted}")
