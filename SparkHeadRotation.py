@@ -3,6 +3,7 @@ import mediapipe as mp
 from DBMonitor import DBMonitor
 import os
 from Webcam import WebcamCapture
+from HeadPoseEstimator import HeadPoseEstimator
 import numpy as np
 from utils import utils
 import time
@@ -28,6 +29,8 @@ class SparkHeadRotation:
         # Thresholds for counting rotations
         self.YAW_THRESHOLD = 35   # Left/Right rotation in pixles
         self.PITCH_THRESHOLD = 35  # Up/Down rotation in pixles
+
+        self.head_pose_estimator = HeadPoseEstimator()
     
     def calculate_head_rotation(self, landmarks, h, w):
         """
@@ -71,7 +74,8 @@ class SparkHeadRotation:
 
             # Calculate yaw and pitch angles
             landmarks = result.pose_landmarks.landmark
-            yaw, pitch = self.calculate_head_rotation(landmarks, h, w)
+            _yaw, _pitch = self.calculate_head_rotation(landmarks, h, w)
+            yaw,pitch,roll = self.head_pose_estimator.estimate_head_pose(frame)
 
             if self.BasePostureCounter < 50:
                 self.YawBasePosture = self.YawBasePosture*0.2+yaw*0.8

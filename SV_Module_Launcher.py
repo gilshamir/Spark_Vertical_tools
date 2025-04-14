@@ -59,7 +59,7 @@ class SparkVerticalStateMachine:
             while self.current_state() == State.NaturalPosture.value:
                 _frame = self.webcam.get_frame()
                 if _frame is not None:
-                    processed_frame, head_rotations, _, _ = self.spark_head_rotation.process(_frame)
+                    _, head_rotations, _, _ = self.spark_head_rotation.process(_frame)
                     if head_rotations >= 2:
                         self.dm.set_UpdateState(State.Gaze.value)
                         cv2.destroyAllWindows()
@@ -73,7 +73,7 @@ class SparkVerticalStateMachine:
             while self.current_state() == State.Gaze.value:
                 _frame = self.webcam.get_frame()
                 if _frame is not None:
-                    processed_frame, head_rotation_count, yaw, pitch = self.spark_head_rotation.process(_frame)
+                    _, _, yaw, pitch = self.spark_head_rotation.process(_frame)
                     if yaw == None or pitch == None:
                         continue
                     delta_yaw = np.abs(yaw-prev_yaw)
@@ -141,6 +141,7 @@ db_path = os.path.join(db_dir,r'SparkSync.bytes')
 #create instances of the modules
 eye_level = SparkEyeLevel(True)
 head_rotation = SparkHeadRotation(True)
+head_pose_estimator = SparkHeadRotation(True)
 
 #create webcam capture manager
 webcam = WebcamCapture()
