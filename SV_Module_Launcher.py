@@ -6,6 +6,7 @@ import time
 from Webcam import WebcamCapture
 from SparkEyeLevel import SparkEyeLevel
 from SparkHeadRotation import SparkHeadRotation
+from HeadPoseEstimator import HeadPoseEstimator
 from states import State
 import numpy as np
 
@@ -33,8 +34,6 @@ class SparkVerticalStateMachine:
         elif self.current_state() == State.Position.value:
             print(f"Current State: {State.Position}")
             
-            self.spark_head_rotation.reset()
-            self.spark_head_rotation.resetBasePosture()
             counter = 0
             patient_distance_mean = 0
             while self.current_state() == State.Position.value:
@@ -59,10 +58,13 @@ class SparkVerticalStateMachine:
             while self.current_state() == State.NaturalPosture.value:
                 _frame = self.webcam.get_frame()
                 if _frame is not None:
-                    _, head_rotations, _, _ = self.spark_head_rotation.process(_frame)
-                    if head_rotations >= 2:
-                        self.dm.set_UpdateState(State.Gaze.value)
-                        cv2.destroyAllWindows()
+                    angles = self.spark_head_rotation.estimate_head_pose(_frame)
+                    if angles:
+                        yaw, pitch, roll = angles
+                        if yaw != None and pitch != None and roll != None:
+                                                        
+                    self.dm.set_UpdateState(State.Gaze.value)
+                    cv2.destroyAllWindows()
                 if cv2.waitKey(1) & 0xFF == ord('q'):  # Press 'q' to quit
                     cv2.destroyAllWindows()
                     break
@@ -140,8 +142,8 @@ db_path = os.path.join(db_dir,r'SparkSync.bytes')
 
 #create instances of the modules
 eye_level = SparkEyeLevel(True)
-head_rotation = SparkHeadRotation(True)
-head_pose_estimator = SparkHeadRotation(True)
+#head_rotation = SparkHeadRotation(True)
+head_pose_estimator = HeadPoseEstimator()
 
 #create webcam capture manager
 webcam = WebcamCapture()
@@ -150,7 +152,7 @@ webcam = WebcamCapture()
 db_monitor = DBMonitor(db_path)
 
 #initilize the state machine
-sm = SparkVerticalStateMachine(eye_level, head_rotation, webcam, db_monitor)
+sm = SparkVerticalStateMachine(eye_level, head_pose_estimator, webcam, db_monitor)
 
 #define the callback function for the DBMonitor - this sets the state that is read from the DB
 db_monitor.run(setMachineState)
