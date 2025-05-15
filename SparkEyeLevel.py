@@ -22,6 +22,8 @@ class SparkEyeLevel:
         self.screen_height_mm = 700
         self.camera_above_screen = 55
         self.ccd_ang = 26 * np.pi / 180
+        self.horizontal_camera_angle = 0
+        self.vertical_camera_angle = 0
         self.patient_distance = 600
         self.screen_height_px = 1920
         
@@ -83,7 +85,7 @@ class SparkEyeLevel:
         landmark = self.face_landmarks.landmark[landmark_index]
         return utils.coordinates_to_pixles(w, h, landmark.x, landmark.y)
 
-    def calculate_reflection_height(self, landmark_of_interest):
+    def calculate_reflection_height_old(self, landmark_of_interest):
         if self.frame is None:
             return None
         h, w, _ = self.frame.shape
@@ -98,6 +100,45 @@ class SparkEyeLevel:
         alpha = np.arctan(dy_mm / self.focal_length)
         phi = self.ccd_ang - alpha
         reqiredHeight = self.patient_distance * np.tan(phi) - self.camera_above_screen
+        reqiredHeight = int(reqiredHeight * self.screen_height_px / self.screen_height_mm)
+        return reqiredHeight
+    
+    def calculate_reflection_height(self, landmark_of_interest):
+        if self.frame is None:
+            return None
+        
+        normal_to_ccd = np.array([np.tan(self.horizontal_camera_angle), np.tan(self.vertical_camera_angle), -1])
+        normal_to_mirror = np.array([0, 0, -1])
+        ccd_angle = np.arccos(np.dot(normal_to_ccd, normal_to_mirror) / np.linalg.norm(normal_to_ccd))
+        
+        u1 = np.linalg.norm(np.array([1, 0, np.tan(self.horizontal_camera_angle)]))
+        u2 = np.linalg.norm(np.array([0, 1, np.tan(self.vertical_camera_angle)]))
+        CCD_to_Mirror_Transformation_Matrix = np.array(u1, u2, normal_to_ccd)
+        Mirror_to_CCD_Transformation_Matrix = np.linalg.inv(CCD_to_Mirror_Transformation_Matrix)
+        v = np.array([0, self.screen_height_mm, 0])
+        v_tilda = np.matmul(Mirror_to_CCD_Transformation_Matrix, v)
+        d_tilda = np.linalg.norm(v_tilda)
+        
+        h, w, _ = self.frame.shape
+        midImageWidth = w/2
+        midImageHeight = h/2
+        reqiredHeight = int(midImageHeight) #set default to screen center
+        point_of_interest_coordinates = self.get_landmark_coordinates(landmark_of_interest)
+        if point_of_interest_coordinates is None:
+            return reqiredHeight
+        d_pixels = np.sqrt((midImageWidth-point_of_interest_coordinates.x)**2 + (midImageHeight-point_of_interest_coordinates.y)**2)
+        d_mm = d_pixels * self.ccd_px_size
+
+        alpha = np.arctan(d_mm / self.focal_length)
+        phi = self.ccd_ang + alpha
+        patient_dist = self.calculate_patient_distance2()
+        if patient_dist is None:
+            return reqiredHeight
+        y_tilda = patient_dist * np.tan(phi) + d_tilda
+
+        u_tilda = np.array([0, y_tilda, 0])
+        u = np.matmul(CCD_to_Mirror_Transformation_Matrix, u_tilda)
+        reqiredHeight = np.linalg.norm(u)
         reqiredHeight = int(reqiredHeight * self.screen_height_px / self.screen_height_mm)
         return reqiredHeight
     
