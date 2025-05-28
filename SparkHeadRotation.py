@@ -48,10 +48,10 @@ class SparkHeadRotation:
         shoulder_midpoint_pixles = utils.coordinates_to_pixles(w,h,shoulder_midpoint[0],shoulder_midpoint[1])
 
         # Yaw: horizontal displacement of the nose relative to shoulder midpoint
-        yaw = abs(nose_pixles[0] - shoulder_midpoint_pixles[0])
+        yaw = abs(nose_pixles.x - shoulder_midpoint_pixles.x)
 
         # Pitch: vertical displacement of the nose relative to shoulder midpoint
-        pitch = abs(nose_pixles[1] - shoulder_midpoint_pixles[1])
+        pitch = abs(nose_pixles.y - shoulder_midpoint_pixles.y)
 
         return yaw, pitch
     def process(self, frame):
@@ -158,7 +158,7 @@ if __name__ == "__main__":
                 hr.BasePostureCounter = 50
                 processed_frame, head_rotations, yaw, pitch = hr.process(_frame)
                 print(yaw, pitch, head_rotations)
-                time.sleep(0.3)
+                #time.sleep(0.3) #there are fluctuations so I i want to wait a bit before processing the next frame
                 #dm.set_HeadRotations(head_rotations)
                 cv2.imshow("Pupil Connection", processed_frame)
             if cv2.waitKey(1) & 0xFF == ord('q'):  # Press 'q' to quit

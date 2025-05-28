@@ -14,13 +14,14 @@ class SparkEyeLevel:
 
         # Initialize MediaPipe Face Mesh
         self.mp_face_mesh = mp.solutions.face_mesh
-        self.face_mesh = self.mp_face_mesh.FaceMesh(min_detection_confidence=0.5, min_tracking_confidence=0.5)
+        self.face_mesh = self.mp_face_mesh.FaceMesh(min_detection_confidence=0.1, min_tracking_confidence=0.1)
 
-        self.focal_length = 8 #in mm
-        self.ccd_px_size = 0.006 #in mm
-        self.ccd_height_px = 1280 #
+        self.focal_length = 3.543 #in mm
+        self.ccd_px_size = 0.00114 #in mm
+        self.ccd_height_px = 1080 # OLD
         self.screen_height_mm = 700
         self.camera_above_screen = 55
+        self.camera_height_mm = 215
         self.ccd_ang = 26 * np.pi / 180
         self.horizontal_camera_angle = 0
         self.vertical_camera_angle = 0
@@ -50,6 +51,19 @@ class SparkEyeLevel:
         self._LINE_TYPE = 'BOTH' # 'PUPILS' # 'HORIZONTAL'
         self.faces_landmarks = None
         self.pd_px = 0
+
+        
+        normal_to_ccd = np.array([np.tan(self.horizontal_camera_angle), np.tan(self.vertical_camera_angle), -1])
+        normal_to_mirror = np.array([0, 0, -1])
+        self.ccd_angle = np.arccos(np.dot(normal_to_ccd, normal_to_mirror) / np.linalg.norm(normal_to_ccd))
+        
+        u1 = np.array([1, 0, np.tan(self.horizontal_camera_angle)]) / np.linalg.norm(np.array([1, 0, np.tan(self.horizontal_camera_angle)]))
+        u2 = np.array([0, 1, np.tan(self.vertical_camera_angle)]) / np.linalg.norm(np.array([0, 1, np.tan(self.vertical_camera_angle)]))
+        self.CCD_to_Mirror_Transformation_Matrix = np.array([u1, u2, normal_to_ccd])
+        self.Mirror_to_CCD_Transformation_Matrix = np.linalg.inv(self.CCD_to_Mirror_Transformation_Matrix)
+        v = np.array([0, self.camera_height_mm, 0])
+        v_tilda = np.matmul(self.Mirror_to_CCD_Transformation_Matrix, v)
+        self.d_tilda = np.linalg.norm(v_tilda)
 
     def process(self, frame):
         """
@@ -98,7 +112,7 @@ class SparkEyeLevel:
         dy_mm = dy_pixels * self.ccd_px_size * self.ccd_height_px / h
 
         alpha = np.arctan(dy_mm / self.focal_length)
-        phi = self.ccd_ang - alpha
+        phi = self.ccd_angle - alpha
         reqiredHeight = self.patient_distance * np.tan(phi) - self.camera_above_screen
         reqiredHeight = int(reqiredHeight * self.screen_height_px / self.screen_height_mm)
         return reqiredHeight
@@ -106,19 +120,7 @@ class SparkEyeLevel:
     def calculate_reflection_height(self, landmark_of_interest):
         if self.frame is None:
             return None
-        
-        normal_to_ccd = np.array([np.tan(self.horizontal_camera_angle), np.tan(self.vertical_camera_angle), -1])
-        normal_to_mirror = np.array([0, 0, -1])
-        ccd_angle = np.arccos(np.dot(normal_to_ccd, normal_to_mirror) / np.linalg.norm(normal_to_ccd))
-        
-        u1 = np.linalg.norm(np.array([1, 0, np.tan(self.horizontal_camera_angle)]))
-        u2 = np.linalg.norm(np.array([0, 1, np.tan(self.vertical_camera_angle)]))
-        CCD_to_Mirror_Transformation_Matrix = np.array(u1, u2, normal_to_ccd)
-        Mirror_to_CCD_Transformation_Matrix = np.linalg.inv(CCD_to_Mirror_Transformation_Matrix)
-        v = np.array([0, self.screen_height_mm, 0])
-        v_tilda = np.matmul(Mirror_to_CCD_Transformation_Matrix, v)
-        d_tilda = np.linalg.norm(v_tilda)
-        
+                
         h, w, _ = self.frame.shape
         midImageWidth = w/2
         midImageHeight = h/2
@@ -130,14 +132,15 @@ class SparkEyeLevel:
         d_mm = d_pixels * self.ccd_px_size
 
         alpha = np.arctan(d_mm / self.focal_length)
-        phi = self.ccd_ang + alpha
-        patient_dist = self.calculate_patient_distance2()
+        phi = self.ccd_angle + alpha
+        patient_dist = self.calculate_patient_distance()
+        #patient_dist = 600
         if patient_dist is None:
             return reqiredHeight
-        y_tilda = patient_dist * np.tan(phi) + d_tilda
+        y_tilda = patient_dist * np.tan(phi) + self.d_tilda
 
         u_tilda = np.array([0, y_tilda, 0])
-        u = np.matmul(CCD_to_Mirror_Transformation_Matrix, u_tilda)
+        u = np.matmul(self.CCD_to_Mirror_Transformation_Matrix, u_tilda)
         reqiredHeight = np.linalg.norm(u)
         reqiredHeight = int(reqiredHeight * self.screen_height_px / self.screen_height_mm)
         return reqiredHeight
@@ -145,7 +148,7 @@ class SparkEyeLevel:
     def calculate_patient_height(self):
         return self.calculate_reflection_height(self._BRIDGR_C_INDEX)
 
-    def calculate_patient_distance(self):
+    def calculate_patient_distance_old(self):
         if self.frame is None:
             return None
         h, w, _ = self.frame.shape
@@ -164,6 +167,30 @@ class SparkEyeLevel:
         a = dy_pixels * px2mm
         c = a / np.sin(alpha)
         patientDistance = c * np.cos(phi)
+        return patientDistance
+    
+    def calculate_patient_distance(self):
+        if self.frame is None:
+            return None
+        h, w, _ = self.frame.shape
+        midImageWidth = w/2
+        midImageHeight = h/2
+        patientDistance = 0
+        
+        point_of_interest_coordinates = self.get_landmark_coordinates(self._BRIDGR_C_INDEX)
+        d_pixels = np.sqrt((midImageWidth-point_of_interest_coordinates.x)**2 + (midImageHeight-point_of_interest_coordinates.y)**2)
+        d_mm = d_pixels * self.ccd_px_size
+
+        pupil_r = self.get_landmark_coordinates(self._LEFT_EYE_PUPIL_INDEX)
+        pupil_l = self.get_landmark_coordinates(self._RIGHT_EYE_PUPIL_INDEX)
+        pd_px = int(np.sqrt(np.square(pupil_r.x-pupil_l.x)+np.square(pupil_r.y-pupil_l.y)))
+        pd_mm = 60
+        px2mm = pd_mm / pd_px
+        alpha = np.arctan(d_mm / self.focal_length)
+        phi = self.ccd_angle - alpha
+        a = d_pixels * px2mm
+        c = a / np.sin(alpha)
+        patientDistance = c * np.cos(phi)        
         return patientDistance
     
     def display_debug_frame(self):
@@ -209,8 +236,8 @@ if __name__ == "__main__":
             _frame = webcam.get_frame()
             if _frame is not None:
                 el.process(_frame)
-                reflection_height = el.calculate_patient_height()
                 patient_distance = el.calculate_patient_distance()
+                reflection_height = el.calculate_patient_height()
                 print(f"Reflection height: {reflection_height} mm, Patient Distance: {patient_distance} mm")
                 el.display_debug_frame()
                 cv2.imshow("Pupil Connection", _frame)
