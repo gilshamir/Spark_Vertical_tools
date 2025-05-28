@@ -17,3 +17,12 @@ class State(Enum):
     RetakePicture = 13
     SkipToNext = 14
     Idle = 15
+
+class SubState(Enum):
+    Forward = 0
+    Backwards = 1
+    Right = 2
+    Left = 3
+    HeadMoving = 4
+    HeadStationary = 5
+    

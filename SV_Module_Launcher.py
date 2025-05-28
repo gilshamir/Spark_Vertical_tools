@@ -6,7 +6,7 @@ import time
 from Webcam import WebcamCapture
 from SparkEyeLevel import SparkEyeLevel
 from SparkHeadRotation import SparkHeadRotation
-from states import State
+from states import State, SubState
 import numpy as np
 
 class SparkVerticalStateMachine:
@@ -41,8 +41,11 @@ class SparkVerticalStateMachine:
                 if _frame is not None:
                     self.spark_eye_level.process(_frame)
                     patient_distance = self.spark_eye_level.calculate_patient_distance()
-                    
-                    if (patient_distance < 700 and patient_distance > 500):
+                    if (patient_distance < 500):
+                        self.dm.set_UpdateSubState(SubState.Forward.value)
+                    elif (patient_distance > 700):
+                        self.dm.set_UpdateSubState(SubState.Forward.value)
+                    elif (patient_distance < 700 and patient_distance > 500):
                         self.dm.set_UpdateState(State.NaturalPosture.value)
                 if cv2.waitKey(1) & 0xFF == ord('q'):  # Press 'q' to quit
                     cv2.destroyAllWindows()
