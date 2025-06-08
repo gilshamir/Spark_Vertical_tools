@@ -25,6 +25,7 @@ class WebcamCapture:
                 #resized_frame = cv2.resize(cropped_image, (self.SCREEN_RESOLUTION[0], self.SCREEN_RESOLUTION[1]))
                 self.frame = cropped_image  # Update the latest frame
                 #self.frame = frame
+                #print(f"Frame size: {self.frame.shape}")
     def crop_and_resize(self, image, screen_width, screen_height):
         # Get screen aspect ratio
         screen_ar = screen_width / screen_height

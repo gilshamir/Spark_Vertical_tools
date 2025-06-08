@@ -113,7 +113,7 @@ class DBMonitor:
     
     def set_UpdateSubState(self, state):
         if state is not None:
-            results = self.execute('UPDATE BreezeSessionSync SET ProcessSubState=?', (state,))
+            results = self.execute('UPDATE BreezeSessionSync SET SubProcessState=?', (state,))
 
 if __name__ == '__main__':
     def my_callback(raw_data):

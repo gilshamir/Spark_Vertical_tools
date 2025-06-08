@@ -16,16 +16,21 @@ class SparkEyeLevel:
         self.mp_face_mesh = mp.solutions.face_mesh
         self.face_mesh = self.mp_face_mesh.FaceMesh(min_detection_confidence=0.1, min_tracking_confidence=0.1)
 
-        self.focal_length = 3.543 #in mm
+        # Production camera parameters
+        #self.focal_length = 3.543 #in mm (Original Value)
+        #self.focal_length = 1.15 #in mm (Wide angle lens)
+        self.focal_length = 1.6257579102 #in mm (narrow angle lens)
         self.ccd_px_size = 0.00114 #in mm
-        self.ccd_height_px = 1080 # OLD
-        self.screen_height_mm = 700
-        self.camera_above_screen = 55
         self.camera_height_mm = 215
-        self.ccd_ang = 26 * np.pi / 180
-        self.horizontal_camera_angle = 0
+        
+        # dev camera parameters
+        #self.focal_length = 8 #in mm
+        #self.ccd_px_size = 0.005 #in mm
+        #self.camera_height_mm = 515
+
+        self.screen_height_mm = 700
+        self.horizontal_camera_angle = 10
         self.vertical_camera_angle = 0
-        self.patient_distance = 600
         self.screen_height_px = 1920
         
 
@@ -99,28 +104,12 @@ class SparkEyeLevel:
         landmark = self.face_landmarks.landmark[landmark_index]
         return utils.coordinates_to_pixles(w, h, landmark.x, landmark.y)
 
-    def calculate_reflection_height_old(self, landmark_of_interest):
-        if self.frame is None:
-            return None
-        h, w, _ = self.frame.shape
-        midImageHeight = h/2
-        reqiredHeight = int(midImageHeight) #set default to screen center
-        point_of_interest_coordinates = self.get_landmark_coordinates(landmark_of_interest)
-        if point_of_interest_coordinates is None:
-            return reqiredHeight
-        dy_pixels = midImageHeight-point_of_interest_coordinates.y
-        dy_mm = dy_pixels * self.ccd_px_size * self.ccd_height_px / h
-
-        alpha = np.arctan(dy_mm / self.focal_length)
-        phi = self.ccd_angle - alpha
-        reqiredHeight = self.patient_distance * np.tan(phi) - self.camera_above_screen
-        reqiredHeight = int(reqiredHeight * self.screen_height_px / self.screen_height_mm)
-        return reqiredHeight
-    
+        
     def calculate_reflection_height(self, landmark_of_interest):
         if self.frame is None:
             return None
-                
+        ccd_px_size = self.ccd_px_size * 3264 / self.frame.shape[0]
+        focal_length = self.focal_length * 3264 / self.frame.shape[0]  # Adjust focal length based on frame height
         h, w, _ = self.frame.shape
         midImageWidth = w/2
         midImageHeight = h/2
@@ -129,10 +118,12 @@ class SparkEyeLevel:
         if point_of_interest_coordinates is None:
             return reqiredHeight
         d_pixels = np.sqrt((midImageWidth-point_of_interest_coordinates.x)**2 + (midImageHeight-point_of_interest_coordinates.y)**2)
-        d_mm = d_pixels * self.ccd_px_size
+        d_mm = d_pixels * ccd_px_size
 
-        alpha = np.arctan(d_mm / self.focal_length)
-        phi = self.ccd_angle + alpha
+        alpha = np.arctan(d_mm / focal_length)
+        if point_of_interest_coordinates.y > midImageHeight:
+                alpha = -alpha
+        phi = np.radians(self.vertical_camera_angle) + alpha
         patient_dist = self.calculate_patient_distance()
         #patient_dist = 600
         if patient_dist is None:
@@ -141,56 +132,42 @@ class SparkEyeLevel:
 
         u_tilda = np.array([0, y_tilda, 0])
         u = np.matmul(self.CCD_to_Mirror_Transformation_Matrix, u_tilda)
-        reqiredHeight = np.linalg.norm(u)
-        reqiredHeight = int(reqiredHeight * self.screen_height_px / self.screen_height_mm)
-        return reqiredHeight
+        reqiredHeight_mm = np.linalg.norm(u)
+        reqiredHeight_px = h - int(reqiredHeight_mm * self.screen_height_px / self.screen_height_mm)
+        return reqiredHeight_px
     
     def calculate_patient_height(self):
         return self.calculate_reflection_height(self._BRIDGR_C_INDEX)
 
-    def calculate_patient_distance_old(self):
-        if self.frame is None:
-            return None
-        h, w, _ = self.frame.shape
-        midImageHeight = h/2
-        patientDistance = 0
-        bridge_center_height = self.calculate_reflection_height(self._BRIDGR_C_INDEX)            
-        dy_pixels = midImageHeight-bridge_center_height
-        dy_mm = dy_pixels * self.ccd_px_size * self.ccd_height_px / h
-        pupil_r = self.get_landmark_coordinates(self._LEFT_EYE_PUPIL_INDEX)
-        pupil_l = self.get_landmark_coordinates(self._RIGHT_EYE_PUPIL_INDEX)
-        pd_px = int(np.sqrt(np.square(pupil_r.x-pupil_l.x)+np.square(pupil_r.y-pupil_l.y)))
-        pd_mm = 60
-        px2mm = pd_mm / pd_px
-        alpha = np.arctan(dy_mm / self.focal_length)
-        phi = self.ccd_ang - alpha
-        a = dy_pixels * px2mm
-        c = a / np.sin(alpha)
-        patientDistance = c * np.cos(phi)
-        return patientDistance
-    
     def calculate_patient_distance(self):
         if self.frame is None:
             return None
+        ccd_px_size = self.ccd_px_size * 3264 / self.frame.shape[0]
+        focal_length = self.focal_length * 3264 / self.frame.shape[0]  # Adjust focal length based on frame height
         h, w, _ = self.frame.shape
         midImageWidth = w/2
         midImageHeight = h/2
         patientDistance = 0
-        
-        point_of_interest_coordinates = self.get_landmark_coordinates(self._BRIDGR_C_INDEX)
-        d_pixels = np.sqrt((midImageWidth-point_of_interest_coordinates.x)**2 + (midImageHeight-point_of_interest_coordinates.y)**2)
-        d_mm = d_pixels * self.ccd_px_size
+        try:
+            point_of_interest_coordinates = self.get_landmark_coordinates(self._BRIDGR_C_INDEX)
+            d_pixels = np.sqrt((midImageWidth-point_of_interest_coordinates.x)**2 + (midImageHeight-point_of_interest_coordinates.y)**2)
+            d_mm = d_pixels * ccd_px_size
 
-        pupil_r = self.get_landmark_coordinates(self._LEFT_EYE_PUPIL_INDEX)
-        pupil_l = self.get_landmark_coordinates(self._RIGHT_EYE_PUPIL_INDEX)
-        pd_px = int(np.sqrt(np.square(pupil_r.x-pupil_l.x)+np.square(pupil_r.y-pupil_l.y)))
-        pd_mm = 60
-        px2mm = pd_mm / pd_px
-        alpha = np.arctan(d_mm / self.focal_length)
-        phi = self.ccd_angle - alpha
-        a = d_pixels * px2mm
-        c = a / np.sin(alpha)
-        patientDistance = c * np.cos(phi)        
+            pupil_r = self.get_landmark_coordinates(self._LEFT_EYE_PUPIL_INDEX)
+            pupil_l = self.get_landmark_coordinates(self._RIGHT_EYE_PUPIL_INDEX)
+            pd_px = np.sqrt((pupil_r.x-pupil_l.x)**2 + (pupil_r.y-pupil_l.y)**2)
+            pd_mm_CCD = pd_px * ccd_px_size
+            pd_mm_world = 60
+            #CCD2WorldFactor = pd_mm_world / pd_px
+            CCD2WorldFactor = pd_mm_world / pd_mm_CCD
+            alpha = np.arctan(d_mm / focal_length)
+            phi = np.radians(self.horizontal_camera_angle) + alpha
+            #a = d_pixels * CCD2WorldFactor
+            a = d_mm * CCD2WorldFactor
+            c = a / np.sin(alpha)
+            patientDistance = c * np.cos(phi)        
+        except Exception as e:
+            patientDistance = None
         return patientDistance
     
     def display_debug_frame(self):

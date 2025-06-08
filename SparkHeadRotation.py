@@ -14,6 +14,7 @@ class SparkHeadRotation:
         self.YawBasePosture = 0
         self.PitchBasePosture = 0
         self.BasePostureCounter = 0
+        self.BasePostureCounterThreshold = 30  # Number of frames to establish base posture
         self.yaw_count = 0
         self.pitch_count = 0
         self.head_rotation_count = 0
@@ -73,7 +74,7 @@ class SparkHeadRotation:
             landmarks = result.pose_landmarks.landmark
             yaw, pitch = self.calculate_head_rotation(landmarks, h, w)
 
-            if self.BasePostureCounter < 50:
+            if self.BasePostureCounter < self.BasePostureCounterThreshold:
                 self.YawBasePosture = self.YawBasePosture*0.2+yaw*0.8
                 self.PitchBasePosture = self.PitchBasePosture*0.2+pitch*0.8
                 self.BasePostureCounter = self.BasePostureCounter+1

@@ -32,7 +32,6 @@ class SparkVerticalStateMachine:
             print(f"Current State: {State.Welcome}")
         elif self.current_state() == State.Position.value:
             print(f"Current State: {State.Position}")
-            self.spark_eye_level.reset()
             self.spark_head_rotation.reset()
             self.spark_head_rotation.resetBasePosture()
         
@@ -41,24 +40,36 @@ class SparkVerticalStateMachine:
                 if _frame is not None:
                     self.spark_eye_level.process(_frame)
                     patient_distance = self.spark_eye_level.calculate_patient_distance()
-                    if (patient_distance < 500):
+                    if (patient_distance!= None and patient_distance < 600):
+                        self.dm.set_UpdateSubState(SubState.Backwards.value)
+                    elif (patient_distance!= None and patient_distance > 600):
                         self.dm.set_UpdateSubState(SubState.Forward.value)
-                    elif (patient_distance > 700):
-                        self.dm.set_UpdateSubState(SubState.Forward.value)
-                    elif (patient_distance < 700 and patient_distance > 500):
+                    elif (patient_distance!= None and patient_distance < 700 and patient_distance > 500):
                         self.dm.set_UpdateState(State.NaturalPosture.value)
                 if cv2.waitKey(1) & 0xFF == ord('q'):  # Press 'q' to quit
                     cv2.destroyAllWindows()
                     break
         elif self.current_state() == State.NaturalPosture.value:
             print(f"Current State: {State.NaturalPosture}")
+            prev_yaw = np.Infinity
+            prev_pitch = np.Infinity
             while self.current_state() == State.NaturalPosture.value:
                 _frame = self.webcam.get_frame()
                 if _frame is not None:
-                    processed_frame, head_rotations, _, _ = self.spark_head_rotation.process(_frame)
-                    if head_rotations >= 2:
-                        self.dm.set_UpdateState(State.Gaze.value)
-                        cv2.destroyAllWindows()
+                    processed_frame, head_rotation_count, yaw, pitch = self.spark_head_rotation.process(_frame)
+                    if yaw == None or pitch == None:
+                        continue
+                    delta_yaw = np.abs(yaw-prev_yaw)
+                    delta_pitch = np.abs(pitch-prev_pitch)
+                    if delta_yaw >= 3 or delta_pitch >= 3:
+                        self.dm.set_UpdateSubState(SubState.HeadMoving.value)
+                        print("moving head")
+                    else:
+                        self.dm.set_UpdateSubState(SubState.HeadStationary.value)
+                        print("static head")
+                    prev_pitch = pitch
+                    prev_yaw = yaw
+                    time.sleep(0.1)
                 if cv2.waitKey(1) & 0xFF == ord('q'):  # Press 'q' to quit
                     cv2.destroyAllWindows()
                     break
