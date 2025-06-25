@@ -30,27 +30,91 @@ class SparkVerticalStateMachine:
             print(f"Current State: {State.MeasurementStart}")
         elif self.current_state() == State.Welcome.value:
             print(f"Current State: {State.Welcome}")
+            self.dm.set_UpdateSubState(SubState.Start_Positioning.value)
         elif self.current_state() == State.Position.value:
             print(f"Current State: {State.Position}")
+            self.dm.set_UpdateSubState(SubState.Start_Positioning.value)
             self.spark_head_rotation.reset()
             self.spark_head_rotation.resetBasePosture()
-        
+            too_close_index = 0
+            too_far_index = 0
+            correct_distance_index = 0
+            user_identification_failed_index = 0
+            repositioning_counter = 0
+            set_initial_height_index = 0
+            is_initial_height = True
+            mean_patient_height = 0
+
             while self.current_state() == State.Position.value:
                 _frame = self.webcam.get_frame()
                 if _frame is not None:
                     self.spark_eye_level.process(_frame)
                     patient_distance = self.spark_eye_level.calculate_patient_distance()
-                    if (patient_distance!= None and patient_distance < 600):
-                        self.dm.set_UpdateSubState(SubState.Backwards.value)
-                    elif (patient_distance!= None and patient_distance > 600):
-                        self.dm.set_UpdateSubState(SubState.Forward.value)
-                    elif (patient_distance!= None and patient_distance < 700 and patient_distance > 500):
-                        self.dm.set_UpdateState(State.NaturalPosture.value)
+                    patient_height = self.spark_eye_level.calculate_patient_height()
+                    #print(f"patient_distance: {patient_distance}")
+                    if (is_initial_height and patient_distance != None and patient_height != None):
+                        if set_initial_height_index < 50:
+                            set_initial_height_index = set_initial_height_index + 1
+                            mean_patient_height = mean_patient_height*0.4 + patient_height*0.6
+                        else:
+                            is_initial_height = False
+                            set_initial_height_index = 0
+                            #print(f"frame shape: {_frame.shape}")
+                            self.dm.set_FaceDisplayHeight(mean_patient_height)
+                        #print(f"setting initial patient height: {patient_height}")
+                    if (patient_distance == None):
+                        user_identification_failed_index = user_identification_failed_index+1
+                        if (user_identification_failed_index >= 40 and user_identification_failed_index <= 50):
+                            self.dm.set_UpdateSubState(SubState.Start_Positioning.value)
+                        if user_identification_failed_index >= 500:
+                            user_identification_failed_index = 0
+                            is_initial_height = True
+                            #print("resseting patient height")
+                            repositioning_counter = repositioning_counter+1
+                            if repositioning_counter >= 3:
+                                repositioning_counter = 0
+                                self.dm.set_UpdateState(State.CommercialVideoState.value)
+                            else:
+                                self.dm.set_UpdateSubState(SubState.RePositioning.value)
+                    elif (patient_distance!= None and patient_distance < 500):
+                        too_close_index = too_close_index+1
+                        correct_distance_index = 0
+                        too_far_index = 0
+                        user_identification_failed_index = 0
+                        repositioning_counter = 0
+                        if (too_close_index >= 40 and too_close_index <= 50):
+                            self.dm.set_UpdateSubState(SubState.Start_Positioning.value)
+                        if (too_close_index >= 350):
+                            too_close_index = 0                            
+                            self.dm.set_UpdateSubState(SubState.Backwards.value)
+                    elif (patient_distance!= None and patient_distance > 650):
+                        too_far_index = too_far_index+1
+                        correct_distance_index = 0
+                        too_close_index = 0
+                        user_identification_failed_index = 0
+                        repositioning_counter = 0
+                        if (too_far_index >= 40 and too_far_index <= 50):
+                            self.dm.set_UpdateSubState(SubState.Start_Positioning.value)
+                        if (too_far_index >= 350):
+                            too_far_index = 0
+                            self.dm.set_UpdateSubState(SubState.Forward.value)
+                    elif (patient_distance!= None and patient_distance < 650 and patient_distance > 500):
+                        correct_distance_index = correct_distance_index + 1
+                        repositioning_counter = 0
+                        if (correct_distance_index >= 120):
+                            correct_distance_index = 0
+                            patient_height = self.spark_eye_level.calculate_patient_height()
+                            self.dm.set_FaceDisplayHeight( patient_height)
+                            #print(f"patient_distance: {patient_distance}")
+                            #print(f"patient_height: {patient_height}")
+                            self.dm.set_UpdateSubState(SubState.Done_Positioning.value)
+                            time.sleep(0.9)                            
                 if cv2.waitKey(1) & 0xFF == ord('q'):  # Press 'q' to quit
                     cv2.destroyAllWindows()
                     break
         elif self.current_state() == State.NaturalPosture.value:
             print(f"Current State: {State.NaturalPosture}")
+            self.dm.set_UpdateSubState(SubState.Start_head_Rotation.value)
             prev_yaw = np.Infinity
             prev_pitch = np.Infinity
             while self.current_state() == State.NaturalPosture.value:
@@ -59,17 +123,20 @@ class SparkVerticalStateMachine:
                     processed_frame, head_rotation_count, yaw, pitch = self.spark_head_rotation.process(_frame)
                     if yaw == None or pitch == None:
                         continue
-                    delta_yaw = np.abs(yaw-prev_yaw)
-                    delta_pitch = np.abs(pitch-prev_pitch)
-                    if delta_yaw >= 3 or delta_pitch >= 3:
-                        self.dm.set_UpdateSubState(SubState.HeadMoving.value)
-                        print("moving head")
-                    else:
-                        self.dm.set_UpdateSubState(SubState.HeadStationary.value)
-                        print("static head")
+                    if (prev_yaw != np.Infinity or prev_pitch != np.Infinity):
+                        delta_yaw = np.abs(yaw-prev_yaw)
+                        delta_pitch = np.abs(pitch-prev_pitch)
+                        #print(f"yaw: {yaw}, pitch: {pitch}, d_yaw: {delta_yaw}, d_pitch: {delta_pitch}")
+                        if delta_yaw >= 30 or delta_pitch >= 30:
+                            self.dm.set_UpdateSubState(SubState.Head_In_Motion.value)
+                            #print("moving head")
+                        else:
+                            self.dm.set_UpdateSubState(SubState.Head_Is_Static.value)
+                            #print("static head")
                     prev_pitch = pitch
                     prev_yaw = yaw
-                    time.sleep(0.1)
+                    time.sleep(0.2)
+                    
                 if cv2.waitKey(1) & 0xFF == ord('q'):  # Press 'q' to quit
                     cv2.destroyAllWindows()
                     break
@@ -77,6 +144,7 @@ class SparkVerticalStateMachine:
             print(f"Current State: {State.Gaze}")
             prev_yaw = np.Infinity
             prev_pitch = np.Infinity
+            stability_index = 0
             while self.current_state() == State.Gaze.value:
                 _frame = self.webcam.get_frame()
                 if _frame is not None:
@@ -86,9 +154,9 @@ class SparkVerticalStateMachine:
                     delta_yaw = np.abs(yaw-prev_yaw)
                     delta_pitch = np.abs(pitch-prev_pitch)
                     if delta_yaw <= 1 and delta_pitch <= 1:
-                        patient_height = self.spark_eye_level.calculate_projection_height(_frame)
+                        patient_height = self.spark_eye_level.calculate_patient_height()
                         #add average value
-                        self.dm.set_FaceDisplayHeight(patient_height)
+                        #self.dm.set_FaceDisplayHeight(patient_height)
                         self.dm.set_UpdateState(State.CustomerReadyForCapture.value)
                         cv2.destroyAllWindows()
                     else:
@@ -100,8 +168,8 @@ class SparkVerticalStateMachine:
                     break
         elif self.current_state() == State.CustomerReadyForCapture.value:
             print(f"Current State: {State.CustomerReadyForCapture}")
-            self.spark_eye_level.reset()
-            self.spark_head_rotation.reset()
+            #self.spark_eye_level.reset()
+            #self.spark_head_rotation.reset()
         elif self.current_state() == State.CaptureStarted.value:
             print(f"Current State: {State.CaptureStarted}")
         elif self.current_state() == State.CaptureCompleted.value:
@@ -146,8 +214,8 @@ with open('config.txt', 'r') as file:
 db_path = os.path.join(db_dir,r'SparkSync.bytes')
 
 #create instances of the modules
-eye_level = SparkEyeLevel(True)
-head_rotation = SparkHeadRotation(True)
+eye_level = SparkEyeLevel(False)
+head_rotation = SparkHeadRotation(False)
 
 #create webcam capture manager
 webcam = WebcamCapture()

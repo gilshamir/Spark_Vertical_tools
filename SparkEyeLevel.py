@@ -21,7 +21,7 @@ class SparkEyeLevel:
         #self.focal_length = 1.15 #in mm (Wide angle lens)
         self.focal_length = 1.6257579102 #in mm (narrow angle lens)
         self.ccd_px_size = 0.00114 #in mm
-        self.camera_height_mm = 215
+        self.camera_height_mm = 368
         
         # dev camera parameters
         #self.focal_length = 8 #in mm
@@ -86,6 +86,8 @@ class SparkEyeLevel:
         if results.multi_face_landmarks and results.multi_face_landmarks[0]:
             self.frame = frame
             self.face_landmarks = results.multi_face_landmarks[0]
+        else:
+            self.face_landmarks = None
 
     def get_landmark_coordinates(self, landmark_index):
         """
@@ -100,9 +102,12 @@ class SparkEyeLevel:
         """
         if self.frame is None:
             return None
-        h, w, _ = self.frame.shape        
-        landmark = self.face_landmarks.landmark[landmark_index]
-        return utils.coordinates_to_pixles(w, h, landmark.x, landmark.y)
+        h, w, _ = self.frame.shape
+        if self.face_landmarks != None:
+            landmark = self.face_landmarks.landmark[landmark_index]
+            return utils.coordinates_to_pixles(w, h, landmark.x, landmark.y)
+        else:
+            return None
 
         
     def calculate_reflection_height(self, landmark_of_interest):
@@ -150,11 +155,15 @@ class SparkEyeLevel:
         patientDistance = 0
         try:
             point_of_interest_coordinates = self.get_landmark_coordinates(self._BRIDGR_C_INDEX)
+            if point_of_interest_coordinates == None:
+                return None
             d_pixels = np.sqrt((midImageWidth-point_of_interest_coordinates.x)**2 + (midImageHeight-point_of_interest_coordinates.y)**2)
             d_mm = d_pixels * ccd_px_size
 
             pupil_r = self.get_landmark_coordinates(self._LEFT_EYE_PUPIL_INDEX)
             pupil_l = self.get_landmark_coordinates(self._RIGHT_EYE_PUPIL_INDEX)
+            if pupil_r == None or pupil_l == None:
+                return None
             pd_px = np.sqrt((pupil_r.x-pupil_l.x)**2 + (pupil_r.y-pupil_l.y)**2)
             pd_mm_CCD = pd_px * ccd_px_size
             pd_mm_world = 60

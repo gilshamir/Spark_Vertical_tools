@@ -8,13 +8,13 @@ from utils import utils
 import time
 
 class SparkHeadRotation:
-    def __init__(self, debug=False):
+    def __init__(self, debug=True):
         self._IS_DEBUG = debug
         
         self.YawBasePosture = 0
         self.PitchBasePosture = 0
         self.BasePostureCounter = 0
-        self.BasePostureCounterThreshold = 30  # Number of frames to establish base posture
+        self.BasePostureCounterThreshold = 1  # Number of frames to establish base posture
         self.yaw_count = 0
         self.pitch_count = 0
         self.head_rotation_count = 0

@@ -19,10 +19,15 @@ class State(Enum):
     Idle = 15
 
 class SubState(Enum):
-    Forward = 0
-    Backwards = 1
-    Right = 2
-    Left = 3
-    HeadMoving = 4
-    HeadStationary = 5
+    Start_Positioning = 0
+    RePositioning = 1
+    Forward = 2
+    Backwards = 3
+    Left = 4
+    Right = 5
+    Done_Positioning = 6
+    Start_head_Rotation = 7
+    Head_In_Motion = 8
+    Head_Is_Static = 9
+    Done_head_Rotation = 10
     

@@ -1,4 +1,1 @@
 C:\temp\SparkSyncDb
-0.33
-false
-6
